@@ -39,6 +39,8 @@
             <BitmapImage x:Key="IconPlayKey" UriSource="pack://application:,,,/Assets/icon_play.png"/>
             <BitmapImage x:Key="BgHintsKey" UriSource="pack://application:,,,/Assets/bg_hints.png"/>
             <BitmapImage x:Key="RhLoreKey" UriSource="pack://application:,,,/Assets/rh_lore.png"/>
+            <!-- Usa caminho em minúsculas para casar com os Resources incluídos no csproj (assets/...) -->
+            <BitmapImage x:Key="IconUpdateKey" UriSource="pack://application:,,,/assets/icon_update.png"/>
         </Grid.Resources>
         <Grid.Background>
             <ImageBrush ImageSource="{StaticResource BackGroundKey}" Stretch="UniformToFill" Opacity="100"></ImageBrush>
@@ -268,29 +270,15 @@
                         Foreground="#747474"
                         VerticalAlignment="Center"
                         Text="Version"/>
-                </StackPanel>
-                <!-- Logo da empresa com ícone de atualização do Launcher ao lado -->
-                <StackPanel
-                    Grid.Column="1"
-                    Orientation="Horizontal"
-                    VerticalAlignment="Center"
-                    HorizontalAlignment="Center"
-                    Margin="0,0,0,0">
-                    <Image
-                        x:Name="ImageLogoCompany"
-                        Source="{StaticResource LogoCompanyKey}"
-                        Height="42"
-                        Stretch="Uniform"
-                        Width="286"/>
                     <Button
-                        x:Name="buttonLauncherUpdate"
-                        Width="22"
-                        Height="22"
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Center"
-                        Visibility="Visible"
-                        ToolTip="Atualizar Launcher"
-                        Click="buttonLauncherUpdate_Click">
+    x:Name="buttonLauncherUpdate"
+    Width="22"
+    Height="22"
+    Margin="8,0,0,0"
+    VerticalAlignment="Center"
+    Visibility="Visible"
+    ToolTip="Atualizar Launcher"
+    Click="buttonLauncherUpdate_Click">
                         <!-- Background temporário levemente visível para facilitar localizar o botão durante testes -->
                         <Button.Background>
                             <SolidColorBrush Color="#2000FF00"/>
@@ -299,10 +287,10 @@
                             <SolidColorBrush Color="#00000000"/>
                         </Button.BorderBrush>
                         <Image
-                            Source="pack://application:,,,/Assets/icon_update.png"
-                            Stretch="Uniform"
-                            Width="18"
-                            Height="18"/>
+        Source="{StaticResource IconUpdateKey}"
+        Stretch="Uniform"
+        Width="18"
+        Height="18"/>
                         <Button.Style>
                             <Style TargetType="{x:Type Button}">
                                 <Setter Property="Template">
@@ -317,6 +305,21 @@
                             </Style>
                         </Button.Style>
                     </Button>
+                </StackPanel>
+                <!-- Logo da empresa com ícone de atualização do Launcher ao lado -->
+                <StackPanel
+                    Grid.Column="1"
+                    Orientation="Horizontal"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Margin="0,0,0,0">
+                    <Image
+                        x:Name="ImageLogoCompany"
+                        Source="{StaticResource LogoCompanyKey}"
+                        Height="42"
+                        Stretch="Uniform"
+                        Width="286"/>
+                    
                 </StackPanel>
             </Grid>
         </StackPanel>

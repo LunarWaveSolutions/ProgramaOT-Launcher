@@ -34,7 +34,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $root = (Get-Location).Path
-          $launcherOut = Join-Path $root 'ProgramaOTLauncher' 'bin' 'Release'
+          $launcherOut = Join-Path $root 'bin' 'Release'
           $updaterOut  = Join-Path $root 'Updater' 'bin' 'Release'
           $launcherZip = Join-Path $root 'ProgramaOT-Launcher-Release.zip'
           $updaterZip  = Join-Path $root 'Updater-Release.zip'

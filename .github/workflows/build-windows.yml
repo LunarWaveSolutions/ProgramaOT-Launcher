@@ -42,7 +42,7 @@ jobs:
       with:
         name: ProgramaOT-Launcher-bin-Release
         path: |
-          ProgramaOTLauncher/bin/Release/
+          bin/Release/
 
     - name: Upload Updater artifact (Release bin)
       uses: actions/upload-artifact@v4
