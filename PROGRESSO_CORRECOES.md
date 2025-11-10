@@ -25,3 +25,15 @@ Próximas etapas:
   - `src/componentes/AtualizaLauncher.cs`
   - `src/UpdateProgressWindow.xaml.cs`
 - Benefício: Garantia de integridade do binário baixado e suporte a downloads autenticados da API do GitHub quando o token estiver presente.
+
+## 2025-11-10 — Logger central e instrumentação
+- Ação: Adicionado `Logger` simples que grava em `logs/launcher.log`. Instrumentados pontos críticos:
+  - `App.xaml.cs`: argumentos e fluxo (update vs. normal).
+  - `AtualizaLauncher`: verificação de update e início do processo de atualização.
+  - `AtualizaCliente`: verificação, download, extração e execução do cliente.
+- Arquivos modificados:
+  - `src/Logger.cs`
+  - `src/App.xaml.cs`
+  - `src/componentes/AtualizaLauncher.cs`
+  - `src/componentes/AtualizaCliente.cs`
+- Benefício: Maior visibilidade do comportamento da aplicação e facilidade de diagnóstico.
