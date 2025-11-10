@@ -65,10 +65,20 @@ namespace ProgramaOTLauncher.componentes
             try
             {
                 var currentProcess = Process.GetCurrentProcess();
+                var args = $"--download-update --url=\"{luInfo.AssetUrl}\" --version=\"{luInfo.LatestTag}\" --pid={currentProcess.Id}";
+                if (!string.IsNullOrWhiteSpace(luInfo.AssetApiUrl))
+                {
+                    args += $" --api-url=\"{luInfo.AssetApiUrl}\"";
+                }
+                if (!string.IsNullOrWhiteSpace(luInfo.ChecksumUrl))
+                {
+                    args += $" --checksum-url=\"{luInfo.ChecksumUrl}\"";
+                }
+
                 var processStartInfo = new ProcessStartInfo
                 {
                     FileName = currentProcess.MainModule.FileName,
-                    Arguments = $"--download-update --url=\"{luInfo.AssetUrl}\" --version=\"{luInfo.LatestTag}\" --pid={currentProcess.Id}",
+                    Arguments = args,
                     UseShellExecute = true,
                     Verb = "runas"
                 };
