@@ -1,4 +1,4 @@
-name: Build Linux
+name: Build Linux (disabled for .NET Framework WPF)
 
 on:
   push:
@@ -7,6 +7,10 @@ on:
 
 jobs:
   build:
+    # .NET Framework (v4.8) WPF projects and non-SDK csproj cannot be built/published on Linux
+    # using dotnet CLI. We build on Windows using MSBuild in build-windows.yml.
+    # Disable this job to avoid failing CI on Linux.
+    if: ${{ false }}
 
     runs-on: ubuntu-latest
 
@@ -16,18 +20,5 @@ jobs:
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: 6.0.x
-    - name: Restore dependencies
-      run: dotnet restore
-    - name: Build
-      run: dotnet build --no-restore
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
-      
-    - name: Publish
-      run: dotnet publish
-
-    - name: Upload WebApp1 Build Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: CanaryLauncher
-        path: /home/runner/work/CanaryLauncherUpdate/CanaryLauncherUpdate/bin/Debug/net6.0-windows/publish/
+    - name: Skip build on Linux
+      run: echo "WPF/.NET Framework build is disabled on Linux. Use Windows workflow."
