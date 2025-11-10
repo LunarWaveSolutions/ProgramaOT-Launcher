@@ -38,6 +38,15 @@ namespace ProgramaOTLauncher
                     httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("token", token);
                 }
 
+                // Extrai owner/repo a partir do endpoint de releases do launcher, se possível
+                var (ownerForLauncher, repoForLauncher) = ParseOwnerRepo(config.launcherUpdateEndpoint);
+                if (string.IsNullOrWhiteSpace(ownerForLauncher) || string.IsNullOrWhiteSpace(repoForLauncher))
+                {
+                    // Fallback para os valores padrão do cliente, caso parsing falhe
+                    ownerForLauncher = UpdateConfig.Owner;
+                    repoForLauncher = UpdateConfig.Repo;
+                }
+
                 var response = await httpClient.GetAsync(config.launcherUpdateEndpoint);
                 if (!response.IsSuccessStatusCode)
                     return info;
@@ -63,7 +72,7 @@ namespace ProgramaOTLauncher
                         if (idToken.HasValue)
                         {
                             // API de assets para download com Authorization (repo privado)
-                            info.AssetApiUrl = $"https://api.github.com/repos/{UpdateConfig.Owner}/{UpdateConfig.Repo}/releases/assets/{idToken.Value}";
+                            info.AssetApiUrl = $"https://api.github.com/repos/{ownerForLauncher}/{repoForLauncher}/releases/assets/{idToken.Value}";
                         }
                     }
                 }
@@ -117,6 +126,28 @@ namespace ProgramaOTLauncher
                 // Não falha o launcher em caso de erro de checagem
             }
             return info;
+        }
+
+        // Tenta extrair owner e repo de uma URL do GitHub API do tipo
+        // https://api.github.com/repos/{owner}/{repo}/releases/latest
+        private static (string owner, string repo) ParseOwnerRepo(string endpoint)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(endpoint)) return ("", "");
+                var uri = new Uri(endpoint);
+                // Espera path com segmentos: ["repos", owner, repo, ...]
+                var segments = uri.AbsolutePath.Split(new[] {'/'}, StringSplitOptions.RemoveEmptyEntries);
+                var reposIdx = Array.IndexOf(segments, "repos");
+                if (reposIdx >= 0 && reposIdx + 2 < segments.Length)
+                {
+                    var owner = segments[reposIdx + 1];
+                    var repo = segments[reposIdx + 2];
+                    return (owner, repo);
+                }
+            }
+            catch { }
+            return ("", "");
         }
 
         // Normaliza versões tipo "1.0" ou "1.0.0" em System.Version

@@ -37,3 +37,17 @@ Próximas etapas:
   - `src/componentes/AtualizaLauncher.cs`
   - `src/componentes/AtualizaCliente.cs`
 - Benefício: Maior visibilidade do comportamento da aplicação e facilidade de diagnóstico.
+
+## 2025-11-10 — Correções no fluxo de atualização do launcher
+- Diagnóstico:
+  - A inicialização do update estava demorando devido à elevação sempre forçada (Verb=runas), possivelmente aguardando interação do UAC.
+  - O processo de update falhava ao iniciar com erro por ausência de `UpdaterHelper.exe` em `bin/Debug/UpdateLauncher`.
+- Ações:
+  - Tornada a elevação condicional: só será usada se o diretório de destino não for gravável (evita atraso por UAC quando desnecessário).
+  - Adicionado `ProjectReference` ao `UpdaterHelper` e alvo pós-build no `ProgramaOTLauncher.csproj` para copiar `UpdaterHelper.exe` para `bin/<Config>/UpdateLauncher/`.
+  - Corrigida a construção de `AssetApiUrl` do launcher: agora derivada do próprio `launcherUpdateEndpoint` (owner/repo corretos), evitando uso indevido de configurações do cliente.
+- Arquivos modificados:
+  - `ProgramaOTLauncher.csproj`
+  - `src/componentes/AtualizaLauncher.cs`
+  - `src/LauncherUpdateService.cs`
+- Benefício: Update inicia mais rapidamente quando não precisa de elevação, e evita erro por falta do assistente de atualização; uso correto da API de assets do repositório do launcher.

@@ -103,6 +103,19 @@
     </Reference>
   </ItemGroup>
 
+  <!-- Garantir build do UpdaterHelper e copiar seu executável para a pasta UpdateLauncher no output -->
+  <ItemGroup>
+    <ProjectReference Include="src\UpdaterHelper\UpdaterHelper.csproj">
+      <!-- Não referenciar o assembly (alvo é net9.0); usamos apenas para ordem de build -->
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- Caminho de saída esperado do UpdaterHelper -->
+    <UpdaterHelperOutput>$(MSBuildProjectDirectory)\src\UpdaterHelper\bin\$(Configuration)\net9.0\UpdaterHelper.exe</UpdaterHelperOutput>
+  </PropertyGroup>
+
 
   <ItemGroup>
     <Resource Include="assets\background.jpg" />
@@ -131,5 +144,12 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="ResolveNuGetPackageAssets" />
+  
+  <!-- Pós-build: copiar UpdaterHelper.exe para $(OutDir)UpdateLauncher -->
+  <Target Name="CopyUpdaterHelperAfterBuild" AfterTargets="Build">
+    <Message Text="[launcher] Copiando UpdaterHelper.exe para $(OutDir)UpdateLauncher" Importance="high" />
+    <MakeDir Directories="$(OutDir)UpdateLauncher" />
+    <Copy SourceFiles="$(UpdaterHelperOutput)" DestinationFiles="$(OutDir)UpdateLauncher\UpdaterHelper.exe" SkipUnchangedFiles="true" Condition="Exists('$(UpdaterHelperOutput)')" />
+  </Target>
   
 </Project>

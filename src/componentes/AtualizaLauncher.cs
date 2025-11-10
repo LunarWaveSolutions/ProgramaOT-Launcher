@@ -83,8 +83,15 @@ namespace ProgramaOTLauncher.componentes
                     FileName = currentProcess.MainModule.FileName,
                     Arguments = args,
                     UseShellExecute = true,
-                    Verb = "runas"
                 };
+
+                // Evitar demora por UAC/elevacao desnecessária: só eleva se o diretório de destino não for gravável
+                var targetDir = AppDomain.CurrentDomain.BaseDirectory;
+                var needsElevation = !IsDirectoryWritable(targetDir);
+                if (needsElevation)
+                {
+                    processStartInfo.Verb = "runas";
+                }
 
                 try { Logger.Info($"Iniciando atualização do launcher com argumentos: {args}"); } catch { }
                 Process.Start(processStartInfo);
@@ -97,6 +104,21 @@ namespace ProgramaOTLauncher.componentes
                 MessageBox.Show($"Falha ao iniciar o processo de atualização do launcher: {ex.Message}", "Erro de Atualização", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             return Task.CompletedTask;
+        }
+
+        private static bool IsDirectoryWritable(string dir)
+        {
+            try
+            {
+                var testFile = System.IO.Path.Combine(dir, $".__write_test_{Guid.NewGuid():N}.tmp");
+                using (var fs = System.IO.File.Create(testFile)) { }
+                System.IO.File.Delete(testFile);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }
