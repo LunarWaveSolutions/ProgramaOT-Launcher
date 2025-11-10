@@ -1,16 +1,13 @@
-﻿using System;
-using System.Windows;
-using System.IO;
-using System.Net;
-using System.Windows.Threading;
-using System.Net.Http;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Diagnostics;
-using Newtonsoft.Json;
 using LauncherConfig;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Net.Http;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Threading;
 
 namespace ProgramaOTLauncher
 {
@@ -41,25 +38,7 @@ namespace ProgramaOTLauncher
 
 		public SplashScreen()
 		{
-			// Always show launcher first; do not auto-start client based on versions
 			InitializeComponent();
-			timer.Tick += new EventHandler(timer_SplashScreen);
-			// Short splash duration
-			timer.Interval = new TimeSpan(0, 0, 1);
-			timer.Start();
-		}
-
-		public void timer_SplashScreen(object sender, EventArgs e)
-		{
-			if (!Directory.Exists(GetLauncherPath()))
-			{
-				Directory.CreateDirectory(GetLauncherPath());
-			}
-			MainWindow mainWindow = new MainWindow();
-			this.Close();
-			mainWindow.Show();
-			timer.Stop();
 		}
 	}
 }
-

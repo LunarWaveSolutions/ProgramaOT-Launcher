@@ -17,7 +17,7 @@
 		WindowState="Normal"
 		WindowStartupLocation="CenterScreen"
 		Title="Programa OT Launcher"
-		Loaded="TibiaLauncher_Load">
+		Loaded="TibiaLauncher_Load" >
     <Grid>
 
         <Grid.ColumnDefinitions>
@@ -269,13 +269,13 @@
                         FontWeight="Bold"
                         Foreground="#747474"
                         VerticalAlignment="Center"
-                        Text="Version" Margin="77,0,0,0"/>
+                        Text="Version" Margin="1,0,0,0"/>
                     <Button
                             x:Name="buttonLauncherUpdate"
                             Width="52"
                             Height="20"
                             Visibility="Visible"
-                            Click="buttonLauncherUpdate_Click" Background="#2000FF00" BorderBrush="#00000000" Margin="-202,0,0,0">
+                            Click="buttonLauncherUpdate_Click" Background="#2000FF00" BorderBrush="#00000000" Margin="6,0,0,0">
                         <Button.ToolTip>
                             <ToolTip x:Name="LauncherUpdateToolTip" Placement="Bottom"
                                      Content="Atualização do Launcher disponível. Clique aqui para atualizar."/>
@@ -298,6 +298,44 @@
 					Source="{StaticResource IconUpdateKey}"
 					Stretch="Uniform"
 					Height="20" Width="8" RenderTransformOrigin="0.5,0.5" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Image.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform/>
+                                    <SkewTransform AngleX="0"/>
+                                    <RotateTransform/>
+                                    <TranslateTransform/>
+                                </TransformGroup>
+                            </Image.RenderTransform>
+                        </Image>
+                    </Button>
+                    <Button
+                        x:Name="buttonLauncherUpdate_Copiar"
+                        Width="52"
+                        Height="20"
+                        Visibility="Visible"
+                        Click="buttonLauncherUpdate_Click" Background="#2000FF00" BorderBrush="#00000000" Margin="-52,0,0,0">
+                        <Button.ToolTip>
+                            <ToolTip x:Name="LauncherUpdateToolTip1" Placement="Bottom"
+                                Content="Atualização do Launcher disponível. Clique aqui para atualizar."/>
+                        </Button.ToolTip>
+                        <Button.Style>
+                            <Style TargetType="{x:Type Button}">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="{x:Type Button}">
+                                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="0">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                        <Image
+                            x:Name="buttonLauncherUpdateIcon1"
+                            Source="{StaticResource IconUpdateKey}"
+                            Stretch="Uniform"
+                            Height="20" Width="8" RenderTransformOrigin="0.5,0.5" HorizontalAlignment="Center" VerticalAlignment="Center">
                             <Image.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform/>

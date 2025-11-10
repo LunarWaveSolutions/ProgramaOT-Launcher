@@ -39,6 +39,46 @@
     <LangVersion>8</LangVersion>
   </PropertyGroup>
   <ItemGroup>
+    <ApplicationDefinition Include="src\App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </ApplicationDefinition>
+    <Compile Include="src\App.xaml.cs">
+      <DependentUpon>App.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Page Include="src\MainWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Compile Include="src\MainWindow.xaml.cs">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+    </Compile>
+    <Page Include="src\SplashScreen.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Compile Include="src\SplashScreen.xaml.cs">
+      <DependentUpon>SplashScreen.xaml</DependentUpon>
+    </Compile>
+    <Page Include="src\UpdateProgressWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Compile Include="src\UpdateProgressWindow.xaml.cs">
+      <DependentUpon>UpdateProgressWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="src\AssemblyInfo.cs" />
+    <Compile Include="src\ClientConfig.cs" />
+    <Compile Include="src\LauncherUpdateService.cs" />
+    <Compile Include="src\UpdateConfig.cs" />
+    <Compile Include="src\componentes\AtualizaCliente.cs" />
+    <Compile Include="src\componentes\AtualizaLauncher.cs" />
+    <Compile Include="src\componentes\PathHelper.cs" />
+    <Compile Include="src\componentes\IClientUpdateListener.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
@@ -54,34 +94,15 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="src\App.xaml.cs" />
-    <Compile Include="src\AssemblyInfo.cs" />
-    <Compile Include="src\ClientConfig.cs" />
-    <Compile Include="src\LauncherUpdateService.cs" />
-    <Compile Include="src\UpdateConfig.cs" />
-    <Compile Include="src\MainWindow.xaml.cs" />
-    <Compile Include="src\SplashScreen.xaml.cs" />
-    <PackageReference Include="Ionic.Zip" Version="1.9.1.8" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <Reference Include="DotNetZip">
+      <HintPath>lib\DotNetZip.dll</HintPath>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>lib\Newtonsoft.Json.dll</HintPath>
+    </Reference>
   </ItemGroup>
-  <ItemGroup>
-    <Resource Include="assets\icons.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Resource>
-    <Page Include="src\App.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="src\MainWindow.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="src\SplashScreen.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-  </ItemGroup>
+
+
   <ItemGroup>
     <Resource Include="assets\background.jpg" />
     <Resource Include="assets\bg_button_update.png" />
@@ -92,16 +113,22 @@
     <Resource Include="assets\button_update.png" />
     <Resource Include="assets\icon_play.png" />
     <Resource Include="assets\icon_update.png" />
+    <Resource Include="assets\icons.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Resource>
     <Resource Include="assets\launcher_ico.png" />
     <Resource Include="assets\logo.png" />
     <Resource Include="assets\logo_company.png" />
     <Resource Include="assets\rh_lore.png" />
   </ItemGroup>
   <ItemGroup>
+
     <None Include="launcher_config.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Target Name="ResolveNuGetPackageAssets" />
   
 </Project>
