@@ -1,100 +1,61 @@
 Bem-vindo(a) ao instalador do ProgramaOT!
 
-🔥 
-
 Sua jornada no mundo de aventuras está prestes a começar!
-
-
 
 Prepare-se para viver uma experiência única em um universo cheio de desafios, criaturas épicas e sistemas exclusivos criados especialmente para você.
 
-
-
-🌐 Site oficial:
-👉 https://programaot.shop
-
-Discord
-:👉https://discord.gg/KUR3GAKE
+🌐 Site oficial:👉 https://programaot.shop
+🌐Discord:👉https://discord.gg/KUR3GAKE
 
 
 
 
-🎉 Obrigado por fazer parte do ProgramaOT!
-
+Obrigado por fazer parte do ProgramaOT!
 
 De coração, agradecemos por baixar e apoiar o nosso projeto.
 
 O ProgramaOT nasceu da paixão por Tibia e do sonho de criar algo diferente 
- um mundo onde tecnologia e fantasia se misturam, e cada jogador tem seu próprio caminho pra trilhar. ⚔️💻
+ um mundo onde tecnologia e fantasia se misturam, e cada jogador tem seu próprio caminho pra trilhar. 
 
-🌟 
-Você agora faz parte dessa história.
-Aproveite cada momento, explore os segredos do mapa, descubra profissões únicas, enfrente desafios e, acima de tudo… divirta-se!
+Você agora faz parte dessa história. Aproveite cada momento, explore os segredos do mapa, descubra profissões únicas, enfrente desafios e, acima de tudo… divirta-se!
 
 
 
 
 
-1. Termos de Aceite ProgramaOT
+TERMO DE LICENÇA E USO - PROGRAMAOT
 
+Ao instalar e utilizar o cliente do ProgramaOT, você concorda integralmente com os termos e condições descritos a seguir.
 
+1. SOBRE O PROJETO
+O ProgramaOT é um otServer (servidor alternativo) baseado no jogo Tibia, desenvolvido por fãs e sem qualquer vínculo com a empresa CipSoft GmbH, detentora dos direitos sobre o jogo original.
+Este projeto é destinado exclusivamente para fins de entretenimento e aprendizado.
 
-Leia atentamente antes de continuar a instalação
+2. PROPRIEDADE INTELECTUAL
+Todo o conteúdo original produzido pela equipe do ProgramaOT, incluindo scripts, códigos, mapas, sistemas, artes e demais recursos, é de propriedade exclusiva do projeto.
+É expressamente proibida a cópia, modificação, venda, redistribuição ou uso comercial de qualquer parte sem autorização prévia dos desenvolvedores.
 
+3. CONDUTA DO USUÁRIO
+Ao utilizar o ProgramaOT, o jogador se compromete a:
+- Jogar de forma ética e respeitosa;
+- Não utilizar programas de automação, bots, cheats ou qualquer software que interfira na jogabilidade;
+- Não explorar falhas, bugs ou vulnerabilidades do sistema;
+- Não disseminar discurso de ódio, ofensas, ameaças ou conteúdos ilegais no ambiente do jogo.
 
+4. PRIVACIDADE E DADOS
+O ProgramaOT pode coletar informações técnicas básicas, como IP, horário de login e dados de conta, apenas para fins de autenticação, segurança e manutenção.
+Nenhum dado pessoal é compartilhado com terceiros sem consentimento do usuário.
 
-📜Termos e Condições de Uso
+5. DOAÇÕES E PRODUTOS DIGITAIS
+O ProgramaOT oferece a possibilidade de doações e compras de produtos digitais, como moedas virtuais, benefícios estéticos ou itens exclusivos dentro do jogo.
+Essas transações são voluntárias e têm o objetivo de apoiar a manutenção e o desenvolvimento do servidor.
+Por se tratarem de produtos digitais e entregues automaticamente após a confirmação do pagamento, não há direito a reembolso, estorno ou reversão de qualquer valor doado ou transação concluída.
+A irreversibilidade é necessária para evitar fraudes, proteger a integridade do projeto e garantir a estabilidade econômica do servidor.
 
-Ao instalar o cliente ProgramaOT, você declara estar ciente e de acordo com os termos abaixo:
+6. ISENÇÃO DE RESPONSABILIDADE
+O uso deste cliente é de total responsabilidade do jogador.
+O ProgramaOT não se responsabiliza por perdas de dados, danos, falhas, indisponibilidade temporária ou problemas decorrentes do uso do software.
+O jogador entende que o projeto é gratuito, comunitário e pode passar por mudanças, pausas ou encerramento sem aviso prévio.
 
-
-
-Sobre o Servidor:
-
-O ProgramaOT é um otServer (servidor alternativo de Tibia), criado por fãs e para fãs.
-
-Não possui qualquer vínculo com a empresa CipSoft GmbH, desenvolvedora do jogo original Tibia.
-
-
-
-Direitos Autorais e Conteúdo:
-Todos os sistemas, scripts, mapas, imagens e demais conteúdos desenvolvidos para o ProgramaOT são de uso exclusivo do projeto.
-
-
-É proibido copiar, vender, modificar ou redistribuir qualquer parte sem autorização.
-
-
-
-Conduta e Uso Correto:
-O jogador se compromete a:
-
-Jogar de forma justa e respeitosa;
-
-Não utilizar bots, cheats, macros ilegais ou qualquer programa de automação;
-
-
-
-Não explorar bugs, falhas ou sistemas de forma indevida.
-
-
-
-Privacidade:
-
-O ProgramaOT coleta apenas informações necessárias para autenticação e segurança das contas.
-
-Nenhum dado pessoal é compartilhado com terceiros.
-
-
-
-Responsabilidade:
-
-O uso deste software é de total responsabilidade do usuário.
-
-O ProgramaOT não se responsabiliza por perdas, falhas, danos ou instabilidades causadas pelo uso indevido do jogo.
-
-
-
-💬 Ao clicar em “Concordo”, você aceita integralmente todos os termos acima.
-
-
-
+7. ACEITE
+Ao clicar em "Concordo" ou continuar com a instalação, você confirma que leu, compreendeu e aceita todos os termos deste documento.
