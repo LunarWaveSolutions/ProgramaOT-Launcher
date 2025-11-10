@@ -253,7 +253,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <!-- Container para versão do Launcher + ícone de atualização do Launcher -->
+                <!-- Container para versão do Launcher -->
                 <StackPanel
                     Grid.Column="0"
                     Orientation="Horizontal"
@@ -268,18 +268,32 @@
                         Foreground="#747474"
                         VerticalAlignment="Center"
                         Text="Version"/>
-                    <!-- Ícone pequeno para atualizar o Launcher quando houver update disponível -->
+                </StackPanel>
+                <!-- Logo da empresa com ícone de atualização do Launcher ao lado -->
+                <StackPanel
+                    Grid.Column="1"
+                    Orientation="Horizontal"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Margin="0,0,0,0">
+                    <Image
+                        x:Name="ImageLogoCompany"
+                        Source="{StaticResource LogoCompanyKey}"
+                        Height="42"
+                        Stretch="Uniform"
+                        Width="286"/>
                     <Button
                         x:Name="buttonLauncherUpdate"
                         Width="22"
                         Height="22"
-                        Margin="6,0,0,0"
+                        Margin="8,0,0,0"
                         VerticalAlignment="Center"
-                        Visibility="Collapsed"
+                        Visibility="Visible"
                         ToolTip="Atualizar Launcher"
                         Click="buttonLauncherUpdate_Click">
+                        <!-- Background temporário levemente visível para facilitar localizar o botão durante testes -->
                         <Button.Background>
-                            <SolidColorBrush Color="#00000000"/>
+                            <SolidColorBrush Color="#2000FF00"/>
                         </Button.Background>
                         <Button.BorderBrush>
                             <SolidColorBrush Color="#00000000"/>
@@ -304,15 +318,6 @@
                         </Button.Style>
                     </Button>
                 </StackPanel>
-                <Image
-					x:Name="ImageLogoCompany"
-					Grid.Column="1"
-					Source="{StaticResource LogoCompanyKey}"
-					Height="42"
-					Stretch="Uniform"
-					VerticalAlignment="Top"
-					HorizontalAlignment="Center"
-					Margin="0,-20,0,0" Width="286"/>
             </Grid>
         </StackPanel>
     </Grid>
