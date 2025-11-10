@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using Ionic.Zip;
 using Newtonsoft.Json;
+using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 
 namespace ProgramaOTLauncher
 {
@@ -107,6 +109,60 @@ namespace ProgramaOTLauncher
                     throw new Exception("Falha no download da atualização.", ex);
                 }
 
+                // Validação de checksum (se fornecido)
+                try
+                {
+                    var checksumUrl = GetArg("--checksum-url");
+                    if (!string.IsNullOrWhiteSpace(checksumUrl))
+                    {
+                        SetStatus("Validando checksum do pacote...");
+                        Log($"Fetching checksum from: {checksumUrl}");
+
+                        using (var http = new HttpClient())
+                        {
+                            http.DefaultRequestHeaders.UserAgent.ParseAdd("programaot-launcher");
+                            var token = UpdateConfig.GitHubToken;
+                            if (!string.IsNullOrWhiteSpace(token))
+                            {
+                                http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("token", token);
+                            }
+
+                            var checksumText = await http.GetStringAsync(checksumUrl);
+                            var expectedHash = ExtractSha256(checksumText);
+                            if (string.IsNullOrWhiteSpace(expectedHash))
+                            {
+                                throw new Exception("Não foi possível extrair SHA256 do arquivo de checksum.");
+                            }
+
+                            string actualHash;
+                            using (var fs = File.OpenRead(zipPath))
+                            using (var sha = SHA256.Create())
+                            {
+                                var bytes = sha.ComputeHash(fs);
+                                actualHash = BitConverter.ToString(bytes).Replace("-", "").ToLowerInvariant();
+                            }
+
+                            Log($"Checksum expected: {expectedHash}");
+                            Log($"Checksum actual:   {actualHash}");
+                            if (!string.Equals(expectedHash, actualHash, StringComparison.OrdinalIgnoreCase))
+                            {
+                                throw new Exception("Checksum inválido do pacote de atualização do launcher.");
+                            }
+
+                            Log("Checksum validado com sucesso.");
+                        }
+                    }
+                    else
+                    {
+                        Log("ChecksumUrl não fornecido. Prosseguindo sem validação.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log($"CHECKSUM VALIDATION FAILED: {ex}");
+                    throw;
+                }
+
                 // Bloco de Extração
                 try
                 {
@@ -174,6 +230,13 @@ namespace ProgramaOTLauncher
                 await Task.Delay(5000); // Manter a janela aberta para ver o erro
                 Application.Current.Shutdown();
             }
+        }
+
+        private static string ExtractSha256(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return null;
+            var match = Regex.Match(text, "[a-fA-F0-9]{64}");
+            return match.Success ? match.Value.ToLowerInvariant() : null;
         }
 
         private string GetArg(string name)
