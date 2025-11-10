@@ -1,0 +1,19 @@
+﻿{
+    "clientVersion":  "1.0.0",
+    "launcherVersion":  "1.0",
+    "replaceFolders":  true,
+    "replaceFolderName":  [
+                              {
+                                  "name":  "assets"
+                              },
+                              {
+                                  "name":  "storeimages"
+                              },
+                              {
+                                  "name":  "bin"
+                              }
+                          ],
+    "clientFolder":  "Tibia",
+    "newClientUrl":  "https://github.com/RafaelRodriguesDev/ProgramaOT/releases/latest/download/client-to-update.zip",
+    "clientExecutable":  "client.exe"
+}

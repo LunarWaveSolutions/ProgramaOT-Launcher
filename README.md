@@ -1,2 +1,16 @@
-# ProgramaOT-Launcher
-Este projeto é um launcher/atualizador automático para clientes de OTServer (similar ao Tibia Global). Ele verifica se há nova versão do cliente, baixa o pacote do cliente (ZIP) a partir de uma URL configurada, aplica a atualização e inicia o executável do jogo.
+﻿# ProgramaOT Launcher
+* C# WPF
+* .NET 6.0
+
+### Information
+
+* ✅ Launcher like Tibia Global
+* ✅ Download client
+* ✅ Auto check update
+* ✅ Update client
+* ✅ Run the client
+
+You must configure the "launcher_config.json" url in MainWindow.cs and SplashScreen.cs
+
+In launcher_config.json you need to make necessary settings to use the launcher. (Read the explanation of how to use each configuration)
+

@@ -1,0 +1,14 @@
+bin
+obj
+.vs
+*.user
+*.dll
+
+# Build results
+Properties/
+.vs/
+.obj/
+bin/
+obj/
+bin/Debug/
+bin/Release/
