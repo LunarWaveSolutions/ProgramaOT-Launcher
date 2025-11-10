@@ -19,3 +19,9 @@ Próximas etapas:
 2. Implementar validação de checksum (SHA256) do pacote baixado antes da extração.
 3. Adicionar logger central simples e instrumentar pontos críticos.
 
+## 2025-11-10 — Propagação de AssetApiUrl e ChecksumUrl; validação de checksum
+- Ação: O `AtualizaLauncher` agora inclui `--api-url` e `--checksum-url` ao iniciar o processo de atualização. O `UpdateProgressWindow` valida o checksum SHA256 do arquivo zip antes de extrair, abortando em caso de divergência.
+- Arquivos modificados:
+  - `src/componentes/AtualizaLauncher.cs`
+  - `src/UpdateProgressWindow.xaml.cs`
+- Benefício: Garantia de integridade do binário baixado e suporte a downloads autenticados da API do GitHub quando o token estiver presente.
