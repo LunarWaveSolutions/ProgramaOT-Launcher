@@ -261,7 +261,7 @@
                     Orientation="Horizontal"
                     HorizontalAlignment="Left"
                     VerticalAlignment="Bottom"
-                    Margin="10,0,10,0">
+                    Margin="10,0,14,0">
                     <TextBlock
                         x:Name="labelVersion"
                         FontFamily="Verdana"
@@ -269,13 +269,13 @@
                         FontWeight="Bold"
                         Foreground="#747474"
                         VerticalAlignment="Center"
-                        Text="Version"/>
+                        Text="Version" Margin="77,0,0,0"/>
                     <Button
                             x:Name="buttonLauncherUpdate"
                             Width="52"
                             Height="20"
                             Visibility="Visible"
-                            Click="buttonLauncherUpdate_Click" Background="#2000FF00" BorderBrush="#00000000" Margin="9,0,0,0">
+                            Click="buttonLauncherUpdate_Click" Background="#2000FF00" BorderBrush="#00000000" Margin="-202,0,0,0">
                         <Button.ToolTip>
                             <ToolTip x:Name="LauncherUpdateToolTip" Placement="Bottom"
                                      Content="Atualização do Launcher disponível. Clique aqui para atualizar."/>

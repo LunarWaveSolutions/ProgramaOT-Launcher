@@ -81,7 +81,19 @@ namespace ProgramaOTLauncher
                 }
                 catch { }
 
-                // Atualização disponível somente quando a versão/tag mais recente é maior que a instalada
+                // Fallback para tags não SemVer: se não conseguir normalizar, considerar diferença de texto como update
+                if (!tagDiffers)
+                {
+                    var curText = CleanTag(installedVersion);
+                    var latestText = CleanTag(latestTag);
+                    if (!string.IsNullOrWhiteSpace(curText) && !string.IsNullOrWhiteSpace(latestText)
+                        && !string.Equals(curText, latestText, StringComparison.OrdinalIgnoreCase))
+                    {
+                        tagDiffers = true;
+                    }
+                }
+
+                // Atualização disponível quando detectamos diferença
                 info.HasUpdate = tagDiffers;
 
                 // Mandatory se installedVersion < launcherMinVersion

@@ -42,6 +42,17 @@ jobs:
           if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
           Compress-Archive -Path "$launcherOut\*" -DestinationPath $zipPath -Force
 
+      - name: Compute timestamp tag/name
+        id: vars
+        shell: pwsh
+        run: |
+          $ts = Get-Date -Format 'yyyyMMdd-HHmm'
+          # Tag e nome amigáveis baseados em data/hora
+          $tag = "auto-$ts"
+          $name = "Auto Release $ts"
+          echo "tag=$tag" >> $env:GITHUB_OUTPUT
+          echo "name=$name" >> $env:GITHUB_OUTPUT
+
       - name: Generate SHA256 checksum file
         shell: pwsh
         run: |
@@ -55,8 +66,8 @@ jobs:
       - name: Create GitHub Release and upload assets
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: auto-${{ github.sha }}
-          name: Auto Release ${{ github.sha }}
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: ${{ steps.vars.outputs.name }}
           draft: false
           prerelease: false
           files: |

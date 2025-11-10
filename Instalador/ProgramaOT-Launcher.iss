@@ -29,8 +29,6 @@ Name: "br"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
 
 [Files]
 Source: "j:\Projeto\Ot\ProgramaOT-Launcher\bin\Debug\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion; Excludes: "Tibia\*"
-; Inclui Updater.exe compilado (Release) na instalação
-Source: "j:\Projeto\Ot\ProgramaOT-Launcher\Updater\bin\Release\Updater.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\ProgramaOT Launcher"; Filename: "{app}\ProgramaOT-Launcher.exe"; WorkingDir: "{app}"; IconFilename: "{app}\ProgramaOT-Launcher.exe"

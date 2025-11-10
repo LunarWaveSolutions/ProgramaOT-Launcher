@@ -181,27 +181,54 @@ namespace ProgramaOTLauncher
 				buttonPlay_tooltip.Text = "Download";
 				needUpdate = true;
 			}
-			else
-			{
-				// Client folder exists: compare installed tag vs latest tag
-				if (!string.IsNullOrEmpty(latestReleaseTag) && !string.IsNullOrEmpty(installedTag) && latestReleaseTag == installedTag)
-				{
-					buttonPlay.Background = new ImageBrush(new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/button_play.png")));
-					buttonPlayIcon.Source = new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/icon_play.png"));
-					buttonPlay_tooltip.Text = "Play";
-					needUpdate = false;
-				}
-				else
-				{
-					buttonPlay.Background = new ImageBrush(new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/button_update.png")));
-					buttonPlayIcon.Source = new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/icon_update.png"));
-					labelClientVersion.Content = "Update";
-					labelClientVersion.Visibility = Visibility.Visible;
-					buttonPlay.Visibility = Visibility.Visible;
-					buttonPlay_tooltip.Text = "Update";
-					needUpdate = true;
-				}
-			}
+            else
+            {
+                // Client folder exists: compare installed tag vs latest tag
+                string installedForCompare = installedTag;
+                if (string.IsNullOrWhiteSpace(installedForCompare))
+                {
+                    // Fallback: usa versão local do cliente no launcher_config.json (base directory)
+                    installedForCompare = GetClientVersion(AppDomain.CurrentDomain.BaseDirectory);
+                }
+
+                bool hasLatest = !string.IsNullOrWhiteSpace(latestReleaseTag);
+                bool hasInstalled = !string.IsNullOrWhiteSpace(installedForCompare);
+                bool upToDate = false;
+
+                if (hasLatest && hasInstalled)
+                {
+                    // Compara removendo prefixo "v"
+                    upToDate = string.Equals(CleanTag(latestReleaseTag), CleanTag(installedForCompare), StringComparison.OrdinalIgnoreCase);
+                }
+                else if (hasInstalled && !hasLatest)
+                {
+                    // Não conseguiu obter a última release; se há versão instalada conhecida, assume up-to-date para evitar re-download indevido
+                    upToDate = true;
+                }
+
+                if (upToDate)
+                {
+                    buttonPlay.Background = new ImageBrush(new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/button_play.png")));
+                    buttonPlayIcon.Source = new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/icon_play.png"));
+                    buttonPlay_tooltip.Text = "Play";
+                    needUpdate = false;
+                    // Se está atualizado e ainda não temos versions.json, persistir a tag para as próximas execuções
+                    if (string.IsNullOrWhiteSpace(installedTag) && !string.IsNullOrWhiteSpace(latestReleaseTag))
+                    {
+                        try { SaveInstalledTag(latestReleaseTag); } catch { }
+                    }
+                }
+                else
+                {
+                    buttonPlay.Background = new ImageBrush(new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/button_update.png")));
+                    buttonPlayIcon.Source = new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/icon_update.png"));
+                    labelClientVersion.Content = "Update";
+                    labelClientVersion.Visibility = Visibility.Visible;
+                    buttonPlay.Visibility = Visibility.Visible;
+                    buttonPlay_tooltip.Text = "Update";
+                    needUpdate = true;
+                }
+            }
 		}
 
         // Clique no ícone de update do Launcher ao lado do texto de versão
@@ -325,9 +352,35 @@ namespace ProgramaOTLauncher
         {
             if (string.IsNullOrWhiteSpace(tag)) return "";
             var t = tag.Trim();
+            // Se parecer SemVer numérico, prefixa com "v"; caso contrário, exibe como está (ex.: auto-20250101-1230)
+            if (LooksLikeNumericVersion(t))
+            {
+                if (t.StartsWith("v", StringComparison.OrdinalIgnoreCase))
+                    return t;
+                return "v" + t;
+            }
+            return t;
+        }
+
+        private bool LooksLikeNumericVersion(string tag)
+        {
+            if (string.IsNullOrWhiteSpace(tag)) return false;
+            var t = CleanTag(tag);
+            foreach (var c in t)
+            {
+                if (!(char.IsDigit(c) || c == '.')) return false;
+            }
+            return t.Length > 0;
+        }
+
+        // Remove prefixo "v" para comparar versões sem diferença de formato
+        private string CleanTag(string t)
+        {
+            if (string.IsNullOrWhiteSpace(t)) return "";
+            t = t.Trim();
             if (t.StartsWith("v", StringComparison.OrdinalIgnoreCase))
-                return t;
-            return "v" + t;
+                t = t.Substring(1);
+            return t;
         }
 
 		private void AddReadOnly()
@@ -505,10 +558,14 @@ namespace ProgramaOTLauncher
 			});
 			progressbarDownload.Value = 100;
 
-			// Download launcher_config.json from url to the launcher path
-			WebClient webClient = new WebClient();
-			string localPath = Path.Combine(GetLauncherPath(true), "launcher_config.json");
-			webClient.DownloadFile(launcerConfigUrl, localPath);
+            // Download launcher_config.json do repositório para a pasta base do launcher (fallback local)
+            WebClient webClient = new WebClient();
+            string localPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "launcher_config.json");
+            try
+            {
+                webClient.DownloadFile(launcerConfigUrl, localPath);
+            }
+            catch { }
 
 			// Persist installed latest tag
 			if (string.IsNullOrEmpty(latestReleaseTag))
