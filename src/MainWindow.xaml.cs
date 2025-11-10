@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Reflection;
 using System.Windows;
@@ -32,6 +32,9 @@ namespace ProgramaOTLauncher
 		string latestReleaseTag = "";
 		bool clientDownloaded = false;
 		bool needUpdate = false;
+
+        // Estado de update do Launcher para UI (ícone ao lado da versão)
+        private LauncherUpdateInfo _pendingLauncherUpdate = null;
 
         static readonly HttpClient httpClient = new HttpClient();
 		WebClient webClient = new WebClient();
@@ -82,6 +85,34 @@ namespace ProgramaOTLauncher
 			labelDownloadPercent.Visibility = Visibility.Collapsed;
 			labelVersion.Text = "v" + programVersion;
 
+			// Checagem de auto-update do Launcher
+			try
+			{
+				var luInfo = await LauncherUpdateService.CheckAsync(clientConfig, programVersion);
+				// Atualiza UI do ícone ao lado da versão
+				if (luInfo.HasUpdate)
+				{
+					_pendingLauncherUpdate = luInfo;
+					buttonLauncherUpdate.Visibility = Visibility.Visible;
+					buttonLauncherUpdate.ToolTip = string.IsNullOrWhiteSpace(luInfo.LatestTag)
+						? "Atualizar Launcher"
+						: $"Atualizar Launcher (última: {luInfo.LatestTag})";
+
+					if (luInfo.Mandatory)
+					{
+						// Atualização obrigatória: executa sem perguntar
+						await UpdateLauncherAsync(luInfo);
+						return; // o app será encerrado para permitir a substituição
+					}
+				}
+				else
+				{
+					_pendingLauncherUpdate = null;
+					buttonLauncherUpdate.Visibility = Visibility.Collapsed;
+				}
+			}
+			catch { }
+
 			string installedTag = GetInstalledTag();
 			latestReleaseTag = await GetLatestReleaseTagAsync();
 
@@ -121,6 +152,17 @@ namespace ProgramaOTLauncher
 				}
 			}
 		}
+
+        // Clique no ícone de update do Launcher ao lado do texto de versão
+        private async void buttonLauncherUpdate_Click(object sender, RoutedEventArgs e)
+        {
+            if (_pendingLauncherUpdate != null && _pendingLauncherUpdate.HasUpdate)
+            {
+                // Para atualizações opcionais, executa ao clicar
+                await UpdateLauncherAsync(_pendingLauncherUpdate);
+                // O app será encerrado pelo Updater
+            }
+        }
 
 		static string GetClientVersion(string path)
 		{
@@ -460,6 +502,145 @@ namespace ProgramaOTLauncher
 		private void MinimizeButton_Click(object sender, RoutedEventArgs e)
 		{
 			WindowState = WindowState.Minimized;
+		}
+
+		// ===== Atualização do Launcher =====
+		private async Task UpdateLauncherAsync(LauncherUpdateInfo luInfo)
+		{
+			try
+			{
+				if (luInfo == null || string.IsNullOrWhiteSpace(luInfo.AssetUrl))
+				{
+					MessageBox.Show("Não foi possível localizar o pacote de atualização do Launcher.", "Atualização do Launcher", MessageBoxButton.OK, MessageBoxImage.Warning);
+					return;
+				}
+
+				// Pasta temporária
+				string tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ProgramaOTLauncherUpdate");
+				Directory.CreateDirectory(tempDir);
+				string zipPath = System.IO.Path.Combine(tempDir, "launcher-update.zip");
+
+				// Download do ZIP
+				try
+				{
+					// Usa HttpClient com Authorization se houver token
+					httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("programaot-launcher");
+					var token = ProgramaOTLauncher.UpdateConfig.GitHubToken;
+					if (!string.IsNullOrWhiteSpace(token))
+					{
+						httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("token", token);
+					}
+					// Se houver AssetApiUrl (privado), usa-o com Accept: application/octet-stream; senão usa browser_download_url
+					HttpResponseMessage resp;
+					if (!string.IsNullOrWhiteSpace(token) && !string.IsNullOrWhiteSpace(luInfo.AssetApiUrl))
+					{
+						var req = new HttpRequestMessage(HttpMethod.Get, luInfo.AssetApiUrl);
+						req.Headers.Accept.ParseAdd("application/octet-stream");
+						resp = await httpClient.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
+					}
+					else
+					{
+						resp = await httpClient.GetAsync(luInfo.AssetUrl);
+					}
+					resp.EnsureSuccessStatusCode();
+					using (var fs = new FileStream(zipPath, FileMode.Create, FileAccess.Write, FileShare.None))
+					{
+						await resp.Content.CopyToAsync(fs);
+					}
+				}
+				catch (Exception ex)
+				{
+					MessageBox.Show($"Falha ao baixar atualização do Launcher: {ex.Message}", "Atualização do Launcher", MessageBoxButton.OK, MessageBoxImage.Error);
+					return;
+				}
+
+				// Validação opcional do checksum
+				if (!string.IsNullOrWhiteSpace(clientConfig.launcherChecksumUrl))
+				{
+					try
+					{
+						var checksumTxt = await httpClient.GetStringAsync(clientConfig.launcherChecksumUrl);
+						var expected = checksumTxt.Trim().Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries)[0];
+						var actual = ComputeSha256(zipPath);
+						if (!string.Equals(expected, actual, StringComparison.OrdinalIgnoreCase))
+						{
+							MessageBox.Show("Checksum do pacote de atualização não confere. Atualização abortada.", "Atualização do Launcher", MessageBoxButton.OK, MessageBoxImage.Error);
+							return;
+						}
+					}
+					catch { /* Em caso de falha de checksum, segue sem bloquear se não for obrigatório */ }
+				}
+
+				// Extrai para tempDir\payload
+				string payloadDir = System.IO.Path.Combine(tempDir, "payload");
+				if (Directory.Exists(payloadDir)) Directory.Delete(payloadDir, true);
+				Directory.CreateDirectory(payloadDir);
+				try
+				{
+					using (Ionic.Zip.ZipFile zf = Ionic.Zip.ZipFile.Read(zipPath))
+					{
+						foreach (var entry in zf)
+						{
+							entry.Extract(payloadDir, ExtractExistingFileAction.OverwriteSilently);
+						}
+					}
+				}
+				catch (Exception ex)
+				{
+					MessageBox.Show($"Falha ao extrair atualização do Launcher: {ex.Message}", "Atualização do Launcher", MessageBoxButton.OK, MessageBoxImage.Error);
+					return;
+				}
+
+				// Localiza Updater.exe na pasta atual do Launcher
+				string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+				string updaterPath = System.IO.Path.Combine(baseDir, "Updater.exe");
+				if (!File.Exists(updaterPath))
+				{
+					MessageBox.Show("Updater.exe não encontrado. Inclua o Updater junto ao Launcher para aplicar a atualização.", "Atualização do Launcher", MessageBoxButton.OK, MessageBoxImage.Warning);
+					return;
+				}
+
+				// Copia Updater.exe para tempDir (evita lock na pasta atual)
+				string tempUpdater = System.IO.Path.Combine(tempDir, "Updater.exe");
+				File.Copy(updaterPath, tempUpdater, true);
+
+				// Parâmetros: source payload, destino baseDir, nome do exe do launcher, pid atual
+				string currentExeName = System.IO.Path.GetFileName(Assembly.GetExecutingAssembly().Location.Replace(".dll", ".exe"));
+				int pid = Process.GetCurrentProcess().Id;
+				string args = $"--source \"{payloadDir}\" --target \"{baseDir}\" --exe \"{currentExeName}\" --waitpid {pid}";
+
+				try
+				{
+					Process.Start(new ProcessStartInfo
+					{
+						FileName = tempUpdater,
+						Arguments = args,
+						UseShellExecute = true
+					});
+				}
+				catch (Exception ex)
+				{
+					MessageBox.Show($"Falha ao iniciar Updater.exe: {ex.Message}", "Atualização do Launcher", MessageBoxButton.OK, MessageBoxImage.Error);
+					return;
+				}
+
+				// Encerra o Launcher para permitir substituição
+				Application.Current.Shutdown();
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show(ex.Message, "Atualização do Launcher", MessageBoxButton.OK, MessageBoxImage.Error);
+			}
+		}
+
+		private static string ComputeSha256(string filePath)
+		{
+			using (var stream = File.OpenRead(filePath))
+			using (var sha = System.Security.Cryptography.SHA256.Create())
+			{
+				var hash = sha.ComputeHash(stream);
+				return string.Concat(hash.Select(b => b.ToString("x2")));
+			}
 		}
 
 		// Open Discord link from Hyperlink in TextBlock

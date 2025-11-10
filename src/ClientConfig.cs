@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Net;
 using System.IO;
@@ -20,6 +20,12 @@ namespace LauncherConfig
 		public string newClientUrl { get; set; }
 		public string newConfigUrl { get; set; }
 		public string clientExecutable { get; set; }
+
+		// Auto-update do Launcher
+		public string launcherUpdateEndpoint { get; set; }
+		public string launcherAssetName { get; set; }
+		public string launcherChecksumUrl { get; set; }
+		public string launcherMinVersion { get; set; }
 
 		public static ClientConfig loadFromFile(string url)
 		{
@@ -63,6 +69,11 @@ namespace LauncherConfig
 					newClientUrl = "",
 					newConfigUrl = "",
 					clientExecutable = "client.exe"
+					,
+					launcherUpdateEndpoint = "",
+					launcherAssetName = "",
+					launcherChecksumUrl = "",
+					launcherMinVersion = ""
 				};
 			}
 		}

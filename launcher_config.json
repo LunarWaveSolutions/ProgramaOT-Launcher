@@ -15,5 +15,9 @@
                           ],
     "clientFolder":  "Tibia",
     "newClientUrl":  "https://github.com/RafaelRodriguesDev/ProgramaOT/releases/latest/download/client-to-update.zip",
-    "clientExecutable":  "client.exe"
+    "clientExecutable":  "client.exe",
+    "launcherUpdateEndpoint": "https://api.github.com/repos/LunarWaveSolutions/ProgramaOT-Launcher/releases/latest",
+    "launcherAssetName": "launcher-update.zip",
+    "launcherChecksumUrl": "https://github.com/LunarWaveSolutions/ProgramaOT-Launcher/releases/latest/download/launcher-update.zip.sha256",
+    "launcherMinVersion": "1.0"
 }
