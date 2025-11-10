@@ -41,6 +41,9 @@ namespace ProgramaOTLauncher
 			InitializeComponent();
             _atualizaLauncher = new AtualizaLauncher(clientConfig, programVersion, GetInstalledLauncherTag, SaveInstalledLauncherTag);
             _atualizaCliente = new AtualizaCliente(this, clientConfig);
+
+            // Garantir que os arquivos de versão existam no primeiro run mesmo sem atualização
+            EnsureVersionFilesPresentIfMissing();
 		}
 
 		static void CreateShortcut()
@@ -71,14 +74,22 @@ namespace ProgramaOTLauncher
             labelClientVersion.Visibility = Visibility.Collapsed;
             labelDownloadPercent.Visibility = Visibility.Collapsed;
             
-            labelVersion.Text = "v" + programVersion;
+            // Exibir a versão do Launcher com base no versionlauncher.json (fonte única de verdade).
+            // Fallback para programVersion apenas se o arquivo ainda não existir.
+            var installedTag = GetInstalledLauncherTag();
+            var cleanInstalled = CleanLauncherTag(installedTag);
+            labelLauncherVersion.Text = "v" + (string.IsNullOrWhiteSpace(cleanInstalled) ? CleanLauncherTag(programVersion) : cleanInstalled);
 
             CreateShortcut();
             AddReadOnly();
 
-			// Checagem de auto-update do Launcher
+            // Checagem de auto-update do Launcher
             await _atualizaLauncher.CheckForUpdateAsync();
-            buttonLauncherUpdate.Visibility = _atualizaLauncher.IsUpdatePending ? Visibility.Visible : Visibility.Collapsed;
+            var vis = _atualizaLauncher.IsUpdatePending ? Visibility.Visible : Visibility.Collapsed;
+            buttonLauncherUpdate.Visibility = vis;
+            // Há dois botões sobrepostos no XAML (buttonLauncherUpdate e buttonLauncherUpdate_Copiar).
+            // Precisamos sincronizar ambos para evitar que o ícone de update apareça indevidamente.
+            try { buttonLauncherUpdate_Copiar.Visibility = vis; } catch { }
 
             // Checagem de atualização do Cliente
             await _atualizaCliente.CheckForUpdateAsync();
@@ -138,17 +149,38 @@ namespace ProgramaOTLauncher
             return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "versions.json");
         }
 
+        private string VersionLauncherJsonPath()
+        {
+            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "versionlauncher.json");
+        }
+
+
         private string GetInstalledLauncherTag()
         {
             try
             {
-                string path = LauncherVersionsJsonPath();
-                if (!File.Exists(path)) return "";
-                var text = File.ReadAllText(path);
-                var obj = JsonConvert.DeserializeObject<Dictionary<string, object>>(text);
-                if (obj != null && obj.ContainsKey("installedLauncherTag") && obj["installedLauncherTag"] != null)
+                // Preferir o novo arquivo versionlauncher.json (criado pelo UpdaterHelper)
+                string vpath = VersionLauncherJsonPath();
+                if (File.Exists(vpath))
                 {
-                    return obj["installedLauncherTag"].ToString();
+                    var text = File.ReadAllText(vpath);
+                    var obj = JsonConvert.DeserializeObject<Dictionary<string, object>>(text);
+                    if (obj != null && obj.ContainsKey("versionTag") && obj["versionTag"] != null)
+                    {
+                        return CleanLauncherTag(obj["versionTag"].ToString());
+                    }
+                }
+
+                // Fallback para o arquivo legado versions.json
+                string path = LauncherVersionsJsonPath();
+                if (File.Exists(path))
+                {
+                    var text = File.ReadAllText(path);
+                    var obj = JsonConvert.DeserializeObject<Dictionary<string, object>>(text);
+                    if (obj != null && obj.ContainsKey("installedLauncherTag") && obj["installedLauncherTag"] != null)
+                    {
+                        return CleanLauncherTag(obj["installedLauncherTag"].ToString());
+                    }
                 }
             }
             catch { }
@@ -159,14 +191,58 @@ namespace ProgramaOTLauncher
         {
             try
             {
+                // Escrever no novo arquivo versionlauncher.json
                 var payload = new Dictionary<string, object>
                 {
-                    {"installedLauncherTag", tag},
-                    {"installedAt", DateTime.UtcNow.ToString("o")}
+                    {"versionTag", CleanLauncherTag(tag)},
+                    {"installedAtUtc", DateTime.UtcNow.ToString("o")}
                 };
-                File.WriteAllText(LauncherVersionsJsonPath(), JsonConvert.SerializeObject(payload, Formatting.Indented));
+                File.WriteAllText(VersionLauncherJsonPath(), JsonConvert.SerializeObject(payload, Formatting.Indented));
+
             }
             catch { }
+        }
+
+        // Cria versionlauncher.json se estiver ausente, usando a melhor fonte disponível
+        private void EnsureVersionFilesPresentIfMissing()
+        {
+            try
+            {
+                var vpath = VersionLauncherJsonPath();
+                // Remover artefatos antigos se existirem
+                try { var alias1 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "launchversion.json"); if (File.Exists(alias1)) File.Delete(alias1); } catch { }
+                try { var alias2 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "launchversions.json"); if (File.Exists(alias2)) File.Delete(alias2); } catch { }
+                bool hasV = File.Exists(vpath);
+                if (!hasV)
+                {
+                    string tag = GetInstalledLauncherTag();
+                    if (string.IsNullOrWhiteSpace(tag))
+                    {
+                        // Se não houver nada salvo, usar a versão declarada no clientConfig
+                        tag = programVersion;
+                        if (string.IsNullOrWhiteSpace(tag))
+                        {
+                            try
+                            {
+                                var exePath = Assembly.GetExecutingAssembly().Location.Replace(".dll", ".exe");
+                                tag = FileVersionInfo.GetVersionInfo(exePath).FileVersion;
+                            }
+                            catch { tag = "unknown"; }
+                        }
+                    }
+                    SaveInstalledLauncherTag(tag);
+                }
+            }
+            catch { }
+        }
+
+        private string CleanLauncherTag(string t)
+        {
+            if (string.IsNullOrWhiteSpace(t)) return t;
+            var s = t.Trim();
+            if (s.StartsWith("auto-", StringComparison.OrdinalIgnoreCase)) s = s.Substring("auto-".Length);
+            if (s.StartsWith("v", StringComparison.OrdinalIgnoreCase)) s = s.Substring(1);
+            return s;
         }
 
 		// Open Discord link from Hyperlink in TextBlock
@@ -183,7 +259,7 @@ namespace ProgramaOTLauncher
 			}
 			catch (Exception ex)
 			{
-				labelVersion.Text = ex.Message;
+                labelLauncherVersion.Text = ex.Message;
 			}
 		}
 
@@ -210,7 +286,8 @@ namespace ProgramaOTLauncher
 
         public void SetAppVersion(string version)
         {
-            labelVersion.Text = version;
+            // Esta versão se refere ao CLIENTE (rodapé). O Launcher usa labelLauncherVersion.
+            labelClientTag.Text = version;
         }
 
         public void ShowDownloadButton()

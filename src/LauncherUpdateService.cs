@@ -167,6 +167,8 @@ namespace ProgramaOTLauncher
         {
             if (string.IsNullOrWhiteSpace(t)) return t;
             t = t.Trim();
+            if (t.StartsWith("auto-", StringComparison.OrdinalIgnoreCase))
+                t = t.Substring("auto-".Length);
             if (t.StartsWith("v", StringComparison.OrdinalIgnoreCase))
                 t = t.Substring(1);
             return t;

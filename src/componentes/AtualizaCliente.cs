@@ -41,9 +41,12 @@ namespace ProgramaOTLauncher.componentes
             string latestReleaseTag = await GetLatestReleaseTagAsync();
             try { Logger.Info($"Cliente instalado tag={installedTag}; último release tag={latestReleaseTag}"); } catch { }
 
-            if (!string.IsNullOrWhiteSpace(latestReleaseTag))
+            // Exibir no rodapé preferencialmente a versão INSTALADA do cliente.
+            // Se ainda não houver instalada, mostrar a última release conhecida.
+            string displayTag = !string.IsNullOrWhiteSpace(installedTag) ? installedTag : latestReleaseTag;
+            if (!string.IsNullOrWhiteSpace(displayTag))
             {
-                _listener.SetAppVersion(NormalizeTagForDisplay(latestReleaseTag));
+                _listener.SetAppVersion(NormalizeTagForDisplay(displayTag));
             }
 
             bool isClientFolderPresent = Directory.Exists(PathHelper.GetLauncherPath(_clientConfig)) &&

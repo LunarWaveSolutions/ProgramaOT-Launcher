@@ -10,7 +10,13 @@ public class UpdaterHelper
 
     public static void Main(string[] args)
     {
-        File.WriteAllText(logFilePath, string.Format("[{0}] UpdaterHelper iniciado.\n", DateTime.Now));
+        // Preservar histórico de execução
+        File.AppendAllText(logFilePath, string.Format("[{0}] UpdaterHelper iniciado.\n", DateTime.Now));
+        File.AppendAllText(logFilePath, string.Format("[{0}] Args length: {1}\n", DateTime.Now, args.Length));
+        foreach (var a in args)
+        {
+            File.AppendAllText(logFilePath, string.Format("[{0}] Arg: {1}\n", DateTime.Now, a));
+        }
         
         // Suporte a dois formatos de argumentos:
         // 1) Posicionais: UpdaterHelper.exe <sourceDir> <targetDir> <processId>
@@ -18,6 +24,9 @@ public class UpdaterHelper
         string? sourceDir = null;
         string? targetDir = null;
         int processId = 0;
+        string? versionTag = null;
+        string? sourceUrl = null;
+        string? zipChecksum = null;
 
         // Tenta primeiro flags nomeadas em formato separado
         int srcIdx = Array.IndexOf(args, "--source-dir");
@@ -38,6 +47,24 @@ public class UpdaterHelper
             int.TryParse(args[pidIdx + 1], out processId);
         }
 
+        int verIdx = Array.IndexOf(args, "--version-tag");
+        if (verIdx >= 0 && verIdx + 1 < args.Length)
+        {
+            versionTag = args[verIdx + 1];
+        }
+
+        int srcUrlIdx = Array.IndexOf(args, "--source-url");
+        if (srcUrlIdx >= 0 && srcUrlIdx + 1 < args.Length)
+        {
+            sourceUrl = args[srcUrlIdx + 1];
+        }
+
+        int zipIdx = Array.IndexOf(args, "--zip-checksum");
+        if (zipIdx >= 0 && zipIdx + 1 < args.Length)
+        {
+            zipChecksum = args[zipIdx + 1];
+        }
+
         // Também suporta formato --flag=valor
         foreach (var a in args)
         {
@@ -52,6 +79,18 @@ public class UpdaterHelper
             else if (a.StartsWith("--pid="))
             {
                 int.TryParse(a.Substring("--pid=".Length), out processId);
+            }
+            else if (a.StartsWith("--version-tag="))
+            {
+                versionTag = a.Substring("--version-tag=".Length);
+            }
+            else if (a.StartsWith("--source-url="))
+            {
+                sourceUrl = a.Substring("--source-url=".Length);
+            }
+            else if (a.StartsWith("--zip-checksum="))
+            {
+                zipChecksum = a.Substring("--zip-checksum=".Length);
             }
         }
 
@@ -71,7 +110,33 @@ public class UpdaterHelper
 
         if (string.IsNullOrWhiteSpace(sourceDir) || string.IsNullOrWhiteSpace(targetDir) || processId == 0)
         {
-            Log("Erro: Argumentos insuficientes. Uso: UpdaterHelper.exe <sourceDir> <targetDir> <processId> ou --source-dir <path> --target-dir <path> --pid <id>");
+            Log("Aviso: Argumentos insuficientes. Tentando inferir caminhos padrão.");
+            try
+            {
+                var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                var inferredSource = Path.Combine(baseDir, "payload");
+                var inferredTarget = Directory.GetParent(baseDir)?.FullName ?? ".";
+
+                if (Directory.Exists(inferredSource) && Directory.Exists(inferredTarget))
+                {
+                    sourceDir = sourceDir ?? inferredSource;
+                    targetDir = targetDir ?? inferredTarget;
+                    Log(string.Format("Inferência bem-sucedida. Source={0} Target={1}", sourceDir, targetDir));
+                }
+                else
+                {
+                    Log(string.Format("Falha na inferência: payload existe? {0}; target existe? {1}", Directory.Exists(inferredSource), Directory.Exists(inferredTarget)));
+                }
+            }
+            catch (Exception iex)
+            {
+                Log(string.Format("Erro durante inferência de caminhos: {0}", iex.Message));
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(sourceDir) || string.IsNullOrWhiteSpace(targetDir))
+        {
+            Log("Erro: Caminhos de origem/destino não definidos. Uso: UpdaterHelper.exe <sourceDir> <targetDir> <processId> ou --source-dir <path> --target-dir <path> --pid <id>");
             return;
         }
 
@@ -80,22 +145,32 @@ public class UpdaterHelper
         Log(string.Format("Source: {0}", sourceDir));
         Log(string.Format("Target: {0}", targetDir));
         Log(string.Format("Process ID: {0}", processId));
+        if (!string.IsNullOrWhiteSpace(versionTag)) Log(string.Format("VersionTag: {0}", versionTag));
+        if (!string.IsNullOrWhiteSpace(sourceUrl)) Log(string.Format("SourceUrl: {0}", sourceUrl));
+        if (!string.IsNullOrWhiteSpace(zipChecksum)) Log(string.Format("ZipChecksum: {0}", zipChecksum));
 
-        try
+        if (processId != 0)
         {
-            Process parentProcess = Process.GetProcessById(processId);
-            Log(string.Format("A aguardar que o processo principal (ID: {0}) termine...", processId));
-            parentProcess.WaitForExit();
-            Log("Processo principal terminado.");
+            try
+            {
+                Process parentProcess = Process.GetProcessById(processId);
+                Log(string.Format("A aguardar que o processo principal (ID: {0}) termine...", processId));
+                parentProcess.WaitForExit();
+                Log("Processo principal terminado.");
+            }
+            catch (ArgumentException)
+            {
+                Log("O processo principal já não está em execução. A continuar com a atualização.");
+            }
+            catch (Exception ex)
+            {
+                Log(string.Format("Erro ao aguardar pelo processo principal: {0}", ex.Message));
+            }
         }
-        catch (ArgumentException)
+        else
         {
-            Log("O processo principal já não está em execução. A continuar com a atualização.");
-        }
-        catch (Exception ex)
-        {
-            Log(string.Format("Erro ao aguardar pelo processo principal: {0}", ex.Message));
-            return;
+            Log("ProcessId não fornecido. A aplicar atualização sem aguardar término explícito.");
+            Thread.Sleep(1000);
         }
 
         try
@@ -106,6 +181,17 @@ public class UpdaterHelper
                 CopyDirectory(sourceDir, targetDir, 5);
             }
             Log("Cópia de ficheiros concluída.");
+
+            // Escrever arquivo de versão do launcher (versionlauncher.json)
+            try
+            {
+                WriteVersionLauncherJson(targetDir, versionTag, sourceUrl, zipChecksum);
+                Log("versionlauncher.json escrito/atualizado com sucesso.");
+            }
+            catch (Exception vex)
+            {
+                Log(string.Format("Falha ao escrever versionlauncher.json: {0}", vex.Message));
+            }
 
             string mainAppPath = Path.Combine(targetDir ?? ".", "ProgramaOT-Launcher.exe");
             Log(string.Format("A tentar reiniciar a aplicação principal em: {0}", mainAppPath));
@@ -141,6 +227,64 @@ public class UpdaterHelper
         }
 
         Log("UpdaterHelper a terminar.");
+    }
+
+    private static void WriteVersionLauncherJson(string? targetDir, string? versionTag, string? sourceUrl, string? zipChecksum)
+    {
+        if (string.IsNullOrWhiteSpace(targetDir)) return;
+        var filePath = Path.Combine(targetDir, "versionlauncher.json");
+        var obsoleteAlias1 = Path.Combine(targetDir, "launchversion.json");
+        var obsoleteAlias2 = Path.Combine(targetDir, "launchversions.json");
+
+        string installedAtUtc = DateTime.UtcNow.ToString("o");
+
+        // Tentar obter a versão do executável principal
+        string? appVersion = null;
+        try
+        {
+            var exePath = Path.Combine(targetDir, "ProgramaOT-Launcher.exe");
+            if (File.Exists(exePath))
+            {
+                var fvi = FileVersionInfo.GetVersionInfo(exePath);
+                appVersion = fvi.ProductVersion ?? fvi.FileVersion;
+            }
+        }
+        catch { }
+
+        string Escape(string? s)
+        {
+            // Evita qualquer possível desreferência nula usando coalescência segura
+            var nonNull = s ?? string.Empty;
+            return nonNull.Replace("\\", "\\\\")
+                          .Replace("\"", "\\\"")
+                          .Replace("\n", "\\n")
+                          .Replace("\r", "\\r");
+        }
+
+        // Normalizar tag para armazenamento: remover prefixos como 'v' e 'auto-'
+        string NormalizeTagForStore(string? t)
+        {
+            if (string.IsNullOrWhiteSpace(t)) return "";
+            var s = t.Trim();
+            if (s.StartsWith("v", StringComparison.OrdinalIgnoreCase)) s = s.Substring(1);
+            if (s.StartsWith("auto-", StringComparison.OrdinalIgnoreCase)) s = s.Substring("auto-".Length);
+            return s;
+        }
+        var storedTag = NormalizeTagForStore(versionTag);
+
+        var json = "{" +
+                   "\n  \"installedAtUtc\": \"" + Escape(installedAtUtc) + "\"," +
+                   "\n  \"versionTag\": \"" + Escape(storedTag) + "\"," +
+                   "\n  \"sourceUrl\": \"" + Escape(sourceUrl) + "\"," +
+                   "\n  \"zipChecksumSha256\": \"" + Escape(zipChecksum) + "\"," +
+                   "\n  \"appFileVersion\": \"" + Escape(appVersion) + "\"" +
+                   "\n}";
+
+        File.WriteAllText(filePath, json);
+
+        // Remover aliases antigos se existirem, para unificar em um único arquivo
+        try { if (File.Exists(obsoleteAlias1)) { File.Delete(obsoleteAlias1); Log("Obsoleto removido: launchversion.json"); } } catch { }
+        try { if (File.Exists(obsoleteAlias2)) { File.Delete(obsoleteAlias2); Log("Obsoleto removido: launchversions.json"); } } catch { }
     }
 
     private static void CopyDirectory(string source, string target, int retries)

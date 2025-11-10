@@ -243,7 +243,7 @@
         <StackPanel
 			Grid.Row="2"
 			VerticalAlignment="Top" Margin="0,103,0,0">
-            <Grid>
+            <Grid Width="800" Height="60" Margin="0,-17,0,0">
 
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -255,7 +255,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <!-- Container para versão do Launcher -->
+                <!-- Container para versão do Cliente -->
                 <StackPanel
                     Grid.Column="0"
                     Orientation="Horizontal"
@@ -263,22 +263,32 @@
                     VerticalAlignment="Bottom"
                     Margin="10,0,14,0">
                     <TextBlock
-                        x:Name="labelVersion"
+                        x:Name="labelClientTag"
                         FontFamily="Verdana"
                         FontSize="12"
                         FontWeight="Bold"
                         Foreground="#747474"
                         VerticalAlignment="Center"
-                        Text="Version" Margin="1,0,0,0"/>
+                        Text="Client" Margin="1,0,0,0"/>
+                </StackPanel>
+                <!-- Container de versão do Launcher e botão de update -->
+                <StackPanel Orientation="Horizontal" Margin="10,-20,266,0" VerticalAlignment="Center" Grid.ColumnSpan="2" Height="23">
+                    <TextBlock
+               x:Name="labelLauncherVersion"
+               FontFamily="Verdana"
+               FontSize="12"
+               FontWeight="Bold"
+               Foreground="#747474"
+               Text="Launcher"/>
                     <Button
-                            x:Name="buttonLauncherUpdate"
-                            Width="52"
-                            Height="20"
-                            Visibility="Visible"
-                            Click="buttonLauncherUpdate_Click" Background="#2000FF00" BorderBrush="#00000000" Margin="6,0,0,0">
+                   x:Name="buttonLauncherUpdate"
+                   Width="52"
+                   Height="20"
+                   Visibility="Collapsed"
+                   Click="buttonLauncherUpdate_Click" Background="#2000FF00" BorderBrush="#00000000" Margin="6,-2,0,0">
                         <Button.ToolTip>
                             <ToolTip x:Name="LauncherUpdateToolTip" Placement="Bottom"
-                                     Content="Atualização do Launcher disponível. Clique aqui para atualizar."/>
+                            Content="Atualização do Launcher disponível. Clique aqui para atualizar."/>
                         </Button.ToolTip>
                         <Button.Style>
                             <Style TargetType="{x:Type Button}">
@@ -294,10 +304,10 @@
                             </Style>
                         </Button.Style>
                         <Image
-					x:Name="buttonLauncherUpdateIcon"
-					Source="{StaticResource IconUpdateKey}"
-					Stretch="Uniform"
-					Height="20" Width="8" RenderTransformOrigin="0.5,0.5" HorizontalAlignment="Center" VerticalAlignment="Center">
+               x:Name="buttonLauncherUpdateIcon"
+               Source="{StaticResource IconUpdateKey}"
+               Stretch="Uniform"
+               Height="20" Width="8" RenderTransformOrigin="0.5,0.5" HorizontalAlignment="Center" VerticalAlignment="Center">
                             <Image.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform/>
@@ -309,14 +319,14 @@
                         </Image>
                     </Button>
                     <Button
-                        x:Name="buttonLauncherUpdate_Copiar"
-                        Width="52"
-                        Height="20"
-                        Visibility="Visible"
-                        Click="buttonLauncherUpdate_Click" Background="#2000FF00" BorderBrush="#00000000" Margin="-52,0,0,0">
+               x:Name="buttonLauncherUpdate_Copiar"
+               Width="52"
+               Height="20"
+               Visibility="Collapsed"
+               Click="buttonLauncherUpdate_Click" Background="#2000FF00" BorderBrush="#00000000" Margin="-52,0,0,0">
                         <Button.ToolTip>
                             <ToolTip x:Name="LauncherUpdateToolTip1" Placement="Bottom"
-                                Content="Atualização do Launcher disponível. Clique aqui para atualizar."/>
+                       Content="Atualização do Launcher disponível. Clique aqui para atualizar."/>
                         </Button.ToolTip>
                         <Button.Style>
                             <Style TargetType="{x:Type Button}">
@@ -332,10 +342,10 @@
                             </Style>
                         </Button.Style>
                         <Image
-                            x:Name="buttonLauncherUpdateIcon1"
-                            Source="{StaticResource IconUpdateKey}"
-                            Stretch="Uniform"
-                            Height="20" Width="8" RenderTransformOrigin="0.5,0.5" HorizontalAlignment="Center" VerticalAlignment="Center">
+                   x:Name="buttonLauncherUpdateIcon1"
+                   Source="{StaticResource IconUpdateKey}"
+                   Stretch="Uniform"
+                   Height="20" Width="8" RenderTransformOrigin="0.5,0.5" HorizontalAlignment="Center" VerticalAlignment="Center">
                             <Image.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform/>
@@ -360,7 +370,6 @@
                         Height="42"
                         Stretch="Uniform"
                         Width="286"/>
-
                 </StackPanel>
             </Grid>
         </StackPanel>

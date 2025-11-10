@@ -43,6 +43,8 @@ namespace ProgramaOTLauncher
             string latestTag = GetArg("--version");
             string assetUrl = GetArg("--url");
             string assetApiUrl = GetArg("--api-url");
+            string usedDownloadUrl = null; // URL efetivamente utilizada para o download (pode ser API ou público)
+            string expectedChecksum = null; // SHA256 esperado, quando fornecido
 
             string updateDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UpdateLauncher");
             Directory.CreateDirectory(updateDir);
@@ -72,6 +74,7 @@ namespace ProgramaOTLauncher
                         }
 
                         var requestUrl = !string.IsNullOrWhiteSpace(token) && !string.IsNullOrWhiteSpace(assetApiUrl) ? assetApiUrl : assetUrl;
+                        usedDownloadUrl = requestUrl;
                         var req = new HttpRequestMessage(HttpMethod.Get, requestUrl);
                         if (!string.IsNullOrWhiteSpace(token) && !string.IsNullOrWhiteSpace(assetApiUrl))
                         {
@@ -133,6 +136,7 @@ namespace ProgramaOTLauncher
                             {
                                 throw new Exception("Não foi possível extrair SHA256 do arquivo de checksum.");
                             }
+                            expectedChecksum = expectedHash;
 
                             string actualHash;
                             using (var fs = File.OpenRead(zipPath))
@@ -187,6 +191,9 @@ namespace ProgramaOTLauncher
                 // --- Parte 2: Lógica de Aplicação (usando UpdaterHelper.exe) ---
                 string sourceDir = payloadDir;
                 string targetDir = AppDomain.CurrentDomain.BaseDirectory;
+                // Evitar problemas de parsing de argumentos quando há barra invertida no final
+                string safeSourceDir = sourceDir.TrimEnd(Path.DirectorySeparatorChar);
+                string safeTargetDir = targetDir.TrimEnd(Path.DirectorySeparatorChar);
                 string pidArg = Process.GetCurrentProcess().Id.ToString();
 
                 Log($"Handing off to UpdaterHelper. Source: {sourceDir}, Target: {targetDir}, PID: {pidArg}");
@@ -205,13 +212,34 @@ namespace ProgramaOTLauncher
                         throw new FileNotFoundException("UpdaterHelper.exe not found.", helperPath);
                     }
 
+                    var extraArgs = string.Empty;
+                    if (!string.IsNullOrWhiteSpace(latestTag))
+                    {
+                        extraArgs += $" --version-tag \"{latestTag}\"";
+                    }
+                    if (!string.IsNullOrWhiteSpace(usedDownloadUrl))
+                    {
+                        extraArgs += $" --source-url \"{usedDownloadUrl}\"";
+                    }
+                    if (!string.IsNullOrWhiteSpace(expectedChecksum))
+                    {
+                        extraArgs += $" --zip-checksum {expectedChecksum}";
+                    }
+
                     var processInfo = new ProcessStartInfo(helperPath)
                     {
-                        Arguments = $"--source-dir \"{sourceDir}\" --target-dir \"{targetDir}\" --pid {pidArg}",
-                        UseShellExecute = true, // Use ShellExecute para permitir que o processo se desanexe
-                        Verb = "runas" // Tenta elevar se necessário para permissões de escrita
+                        Arguments = $"--source-dir \"{safeSourceDir}\" --target-dir \"{safeTargetDir}\" --pid {pidArg}{extraArgs}",
+                        UseShellExecute = true // Use ShellExecute para permitir que o processo se desanexe
                     };
 
+                    // Evita UAC desnecessário: eleva apenas se o diretório alvo não for gravável
+                    if (!IsDirectoryWritable(targetDir))
+                    {
+                        processInfo.Verb = "runas";
+                    }
+
+                    Log($"UpdaterHelper path: {helperPath}");
+                    Log($"UpdaterHelper args: {processInfo.Arguments}");
                     Process.Start(processInfo);
 
                     Log("UpdaterHelper started. Shutting down current application.");
@@ -229,6 +257,21 @@ namespace ProgramaOTLauncher
                 SetStatus("Erro durante a atualização!", ex.Message);
                 await Task.Delay(5000); // Manter a janela aberta para ver o erro
                 Application.Current.Shutdown();
+            }
+        }
+
+        private static bool IsDirectoryWritable(string dir)
+        {
+            try
+            {
+                var testFile = System.IO.Path.Combine(dir, $".__write_test_{Guid.NewGuid():N}.tmp");
+                using (var fs = System.IO.File.Create(testFile)) { }
+                System.IO.File.Delete(testFile);
+                return true;
+            }
+            catch
+            {
+                return false;
             }
         }
 
