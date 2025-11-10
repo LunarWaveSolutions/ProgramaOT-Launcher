@@ -68,6 +68,7 @@
     <Compile Include="src\UpdateProgressWindow.xaml.cs">
       <DependentUpon>UpdateProgressWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="src\Logger.cs" />
     <Compile Include="src\AssemblyInfo.cs" />
     <Compile Include="src\ClientConfig.cs" />
     <Compile Include="src\LauncherUpdateService.cs" />

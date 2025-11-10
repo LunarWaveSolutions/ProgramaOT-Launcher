@@ -3,6 +3,7 @@ using LauncherConfig;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using ProgramaOTLauncher.componentes;
+using ProgramaOTLauncher;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -35,8 +36,10 @@ namespace ProgramaOTLauncher.componentes
 
         public async Task CheckForUpdateAsync()
         {
+            try { Logger.Info("Verificando atualização do cliente..."); } catch { }
             string installedTag = GetInstalledClientTag();
             string latestReleaseTag = await GetLatestReleaseTagAsync();
+            try { Logger.Info($"Cliente instalado tag={installedTag}; último release tag={latestReleaseTag}"); } catch { }
 
             if (!string.IsNullOrWhiteSpace(latestReleaseTag))
             {
@@ -74,6 +77,7 @@ namespace ProgramaOTLauncher.componentes
 
                 if (upToDate)
                 {
+                    try { Logger.Info("Cliente está atualizado. Exibindo botão Play."); } catch { }
                     _listener.ShowPlayButton();
                     NeedUpdate = false;
                     if (string.IsNullOrWhiteSpace(installedTag) && !string.IsNullOrWhiteSpace(latestReleaseTag))
@@ -83,6 +87,7 @@ namespace ProgramaOTLauncher.componentes
                 }
                 else
                 {
+                    try { Logger.Info("Cliente desatualizado ou ausente. Exibindo botão Update."); } catch { }
                     _listener.ShowUpdateButton();
                     NeedUpdate = true;
                 }
@@ -105,11 +110,14 @@ namespace ProgramaOTLauncher.componentes
         {
             try
             {
-                Process.Start(Path.Combine(PathHelper.GetLauncherPath(_clientConfig), "bin", _clientConfig.clientExecutable));
+                var exePath = Path.Combine(PathHelper.GetLauncherPath(_clientConfig), "bin", _clientConfig.clientExecutable);
+                try { Logger.Info($"Lançando cliente: {exePath}"); } catch { }
+                Process.Start(exePath);
                 _listener.CloseWindow();
             }
             catch (Exception ex)
             {
+                try { Logger.Error("Falha ao iniciar cliente", ex); } catch { }
                 System.Windows.MessageBox.Show($"Failed to launch client: {ex.Message}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             }
         }
@@ -125,6 +133,7 @@ namespace ProgramaOTLauncher.componentes
 
             var token = ProgramaOTLauncher.UpdateConfig.GitHubToken;
             var targetFile = Path.Combine(PathHelper.GetLauncherPath(_clientConfig), "tibia.zip");
+            try { Logger.Info($"Iniciando atualização de cliente. Destino do download: {targetFile}; Token presente={ !string.IsNullOrWhiteSpace(token) }"); } catch { }
 
             try
             {
@@ -145,6 +154,7 @@ namespace ProgramaOTLauncher.componentes
                         throw new Exception("Asset 'client-to-update.zip' not found in release.");
 
                     var assetUrl = asset["browser_download_url"].ToString();
+                    try { Logger.Info($"Baixando cliente via API privada: {assetUrl}"); } catch { }
                     
                     using (var webClient = new System.Net.WebClient())
                     {
@@ -156,6 +166,7 @@ namespace ProgramaOTLauncher.componentes
                 else
                 {
                     string latestZipUrl = ProgramaOTLauncher.UpdateConfig.AssetClientZipLatestPublic;
+                    try { Logger.Info($"Baixando cliente via URL pública: {latestZipUrl}"); } catch { }
                     using (var webClient = new System.Net.WebClient())
                     {
                         webClient.DownloadProgressChanged += Client_DownloadProgressChanged;
@@ -166,6 +177,7 @@ namespace ProgramaOTLauncher.componentes
             }
             catch (Exception ex)
             {
+                try { Logger.Error("Falha no download do cliente", ex); } catch { }
                 System.Windows.MessageBox.Show($"Failed to download client: {ex.Message}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             }
         }
@@ -187,12 +199,14 @@ namespace ProgramaOTLauncher.componentes
         {
             if (e.Error != null)
             {
+                try { Logger.Error("Erro reportado pelo WebClient ao baixar cliente", e.Error); } catch { }
                 System.Windows.MessageBox.Show($"Failed to download client: {e.Error.Message}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
                 return;
             }
 
             try
             {
+                try { Logger.Info("Extraindo pacote do cliente..."); } catch { }
                 await Task.Run(() => ExtractZip(filePath, PathHelper.GetLauncherPath(_clientConfig)));
 
                 string latestReleaseTag = await GetLatestReleaseTagAsync();
@@ -203,9 +217,11 @@ namespace ProgramaOTLauncher.componentes
 
                 _listener.HideProgress();
                 await CheckForUpdateAsync();
+                try { Logger.Info("Atualização do cliente concluída."); } catch { }
             }
             catch (Exception ex)
             {
+                try { Logger.Error("Falha ao extrair cliente", ex); } catch { }
                 System.Windows.MessageBox.Show($"Failed to extract client: {ex.Message}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             }
             finally

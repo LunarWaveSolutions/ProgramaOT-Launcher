@@ -28,6 +28,7 @@ namespace ProgramaOTLauncher.componentes
 
         public async Task<LauncherUpdateInfo> CheckForUpdateAsync()
         {
+            try { Logger.Info("Verificando atualização do launcher..."); } catch { }
             var installedLauncherTag = _getInstalledLauncherTag();
             var versionForCompare = string.IsNullOrWhiteSpace(installedLauncherTag) ? _programVersion : installedLauncherTag;
             var luInfo = await LauncherUpdateService.CheckAsync(_clientConfig, versionForCompare);
@@ -38,6 +39,8 @@ namespace ProgramaOTLauncher.componentes
             {
                 try { _saveInstalledLauncherTag(_programVersion); } catch { }
             }
+
+            try { Logger.Info($"Resultado da verificação: hasUpdate={luInfo.HasUpdate}, latestTag={luInfo.LatestTag}"); } catch { }
 
             return luInfo;
         }
@@ -83,11 +86,14 @@ namespace ProgramaOTLauncher.componentes
                     Verb = "runas"
                 };
 
+                try { Logger.Info($"Iniciando atualização do launcher com argumentos: {args}"); } catch { }
                 Process.Start(processStartInfo);
+                try { Logger.Info("Processo de atualização iniciado. Encerrando aplicação atual."); } catch { }
                 Environment.Exit(0);
             }
             catch (Exception ex)
             {
+                try { Logger.Error("Falha ao iniciar o processo de atualização do launcher", ex); } catch { }
                 MessageBox.Show($"Falha ao iniciar o processo de atualização do launcher: {ex.Message}", "Erro de Atualização", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             return Task.CompletedTask;

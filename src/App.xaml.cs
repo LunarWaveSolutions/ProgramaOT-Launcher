@@ -17,6 +17,13 @@ namespace ProgramaOTLauncher
         {
             base.OnStartup(e);
 
+            try
+            {
+                Logger.Info($"OnStartup. Args: {string.Join(" ", e.Args ?? new string[0])}");
+                Logger.Info($"BaseDirectory: {AppDomain.CurrentDomain.BaseDirectory}");
+            }
+            catch { }
+
             // Set shutdown mode to prevent app from closing when splash screen closes
             this.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
@@ -38,6 +45,7 @@ namespace ProgramaOTLauncher
 
                 if (isApplyUpdate || isDownloadUpdate)
                 {
+                    Logger.Info($"Fluxo de atualização detectado. isApplyUpdate={isApplyUpdate}, isDownloadUpdate={isDownloadUpdate}");
                     // For an update flow, we already have explicit shutdown mode.
                     var progressWindow = new UpdateProgressWindow(e.Args);
                     progressWindow.ShowDialog();
@@ -47,6 +55,7 @@ namespace ProgramaOTLauncher
                 }
                 else
                 {
+                    Logger.Info("Fluxo normal (MainWindow).");
                     // For the normal flow, create and show the main window.
                     var mainWindow = new MainWindow();
                     this.MainWindow = mainWindow;
