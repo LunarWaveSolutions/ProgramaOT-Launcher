@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
+using System.Linq;
 
 public class UpdaterHelper
 {
@@ -10,16 +11,71 @@ public class UpdaterHelper
     public static void Main(string[] args)
     {
         File.WriteAllText(logFilePath, string.Format("[{0}] UpdaterHelper iniciado.\n", DateTime.Now));
+        
+        // Suporte a dois formatos de argumentos:
+        // 1) Posicionais: UpdaterHelper.exe <sourceDir> <targetDir> <processId>
+        // 2) Nomeados: --source-dir <path> --target-dir <path> --pid <id>
+        string? sourceDir = null;
+        string? targetDir = null;
+        int processId = 0;
 
-        if (args.Length < 3)
+        // Tenta primeiro flags nomeadas em formato separado
+        int srcIdx = Array.IndexOf(args, "--source-dir");
+        if (srcIdx >= 0 && srcIdx + 1 < args.Length)
         {
-            Log("Erro: Argumentos insuficientes. Uso: UpdaterHelper.exe <sourceDir> <targetDir> <processId>");
+            sourceDir = args[srcIdx + 1];
+        }
+
+        int tgtIdx = Array.IndexOf(args, "--target-dir");
+        if (tgtIdx >= 0 && tgtIdx + 1 < args.Length)
+        {
+            targetDir = args[tgtIdx + 1];
+        }
+
+        int pidIdx = Array.IndexOf(args, "--pid");
+        if (pidIdx >= 0 && pidIdx + 1 < args.Length)
+        {
+            int.TryParse(args[pidIdx + 1], out processId);
+        }
+
+        // Também suporta formato --flag=valor
+        foreach (var a in args)
+        {
+            if (a.StartsWith("--source-dir="))
+            {
+                sourceDir = a.Substring("--source-dir=".Length);
+            }
+            else if (a.StartsWith("--target-dir="))
+            {
+                targetDir = a.Substring("--target-dir=".Length);
+            }
+            else if (a.StartsWith("--pid="))
+            {
+                int.TryParse(a.Substring("--pid=".Length), out processId);
+            }
+        }
+
+        // Fallback para argumentos posicionais
+        if (string.IsNullOrWhiteSpace(sourceDir) || string.IsNullOrWhiteSpace(targetDir) || processId == 0)
+        {
+            if (args.Length >= 3)
+            {
+                sourceDir = sourceDir ?? args.ElementAtOrDefault(0);
+                targetDir = targetDir ?? args.ElementAtOrDefault(1);
+                if (processId == 0)
+                {
+                    int.TryParse(args.ElementAtOrDefault(2), out processId);
+                }
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(sourceDir) || string.IsNullOrWhiteSpace(targetDir) || processId == 0)
+        {
+            Log("Erro: Argumentos insuficientes. Uso: UpdaterHelper.exe <sourceDir> <targetDir> <processId> ou --source-dir <path> --target-dir <path> --pid <id>");
             return;
         }
 
-        string? sourceDir = args[0];
-        string? targetDir = args[1];
-        int processId = int.Parse(args[2]);
+        Log(sourceDir != null && tgtIdx >= 0 ? "Modo argumentos nomeados" : "Modo argumentos posicionais");
 
         Log(string.Format("Source: {0}", sourceDir));
         Log(string.Format("Target: {0}", targetDir));
