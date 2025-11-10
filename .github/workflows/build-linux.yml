@@ -27,7 +27,7 @@ jobs:
       run: dotnet publish
 
     - name: Upload WebApp1 Build Artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: CanaryLauncher
         path: /home/runner/work/CanaryLauncherUpdate/CanaryLauncherUpdate/bin/Debug/net6.0-windows/publish/
