@@ -1,0 +1,54 @@
+name: Release Windows (.NET Framework)
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore ProgramaOTLauncher.sln
+
+      - name: Build Release
+        run: msbuild ProgramaOTLauncher.sln /t:Build /p:Configuration=Release
+
+      - name: Package artifacts (zip)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = (Get-Location).Path
+          $launcherOut = Join-Path $root 'ProgramaOTLauncher' 'bin' 'Release'
+          $updaterOut  = Join-Path $root 'Updater' 'bin' 'Release'
+          $launcherZip = Join-Path $root 'ProgramaOT-Launcher-Release.zip'
+          $updaterZip  = Join-Path $root 'Updater-Release.zip'
+          if (Test-Path $launcherZip) { Remove-Item $launcherZip -Force }
+          if (Test-Path $updaterZip)  { Remove-Item $updaterZip  -Force }
+          Compress-Archive -Path "$launcherOut\*" -DestinationPath $launcherZip -Force
+          Compress-Archive -Path "$updaterOut\*"  -DestinationPath $updaterZip  -Force
+
+      - name: Create GitHub Release and upload assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ProgramaOT-Launcher-Release.zip
+            Updater-Release.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
