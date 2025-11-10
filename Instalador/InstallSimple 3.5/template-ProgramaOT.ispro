@@ -32,7 +32,6 @@ O ProgramaOT nasceu da paixão por Tibia e do sonho de criar algo diferente
 
 Você agora faz parte dessa história. Aproveite cada momento, explore os segredos do mapa, descubra profissões únicas, enfrente desafios e, acima de tudo… divirta-se!
 
-
 [LicenseAgreement]
 TERMO DE LICENÇA E USO - PROGRAMAOT
 
@@ -79,13 +78,13 @@ SetupFile=J:\Projeto\Ot\ProgramaOT-Launcher\Instalador\InstallSimple 3.5
 
 [Shortcuts]
 ProgramGroup=
-CanaryLauncher.exe=dmp
+ProgramaOT-Launcher.exe=
 
 [Registry]
 
 [Requirements]
 OperatingSystem=0
-NetFramework=4.0
+NetFramework=4.8
 NetFrameworkLink=https://dotnet.microsoft.com/download/dotnet-framework
 AdminRights=1
 

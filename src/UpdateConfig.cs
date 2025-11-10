@@ -15,17 +15,18 @@ namespace ProgramaOTLauncher
         public static string RawLauncherConfigUrl => $"https://raw.githubusercontent.com/{Owner}/{Repo}/main/launcher_config.json";
 
         // Token de acesso ao GitHub para repositório privado (opcional).
-        // Recomendado definir via variável de ambiente: CANARY_GITHUB_TOKEN
+        // Recomendado definir via variável de ambiente: PROGRAMAOT_GITHUB_TOKEN
         public static string GitHubToken
         {
             get
             {
-                try { return Environment.GetEnvironmentVariable("PROGRAMAOT_GITHUB_TOKEN") ?? Environment.GetEnvironmentVariable("CANARY_GITHUB_TOKEN") ?? string.Empty; }
+                try { return Environment.GetEnvironmentVariable("PROGRAMAOT_GITHUB_TOKEN") ?? string.Empty; }
                 catch { return string.Empty; }
             }
         }
     }
 }
+
 
 
 

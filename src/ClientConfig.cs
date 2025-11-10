@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using CanaryLauncherUpdate;
+using ProgramaOTLauncher;
 
 namespace LauncherConfig
 {
@@ -73,4 +73,5 @@ namespace LauncherConfig
 		public string name { get; set; }
 	}
 }
+
 
