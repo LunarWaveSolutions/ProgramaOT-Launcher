@@ -5,8 +5,6 @@ VisualStudioVersion = 17.4.33205.214
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProgramaOTLauncher", "ProgramaOTLauncher.csproj", "{E21D451C-4724-4738-A716-DD441AD38747}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Updater", "Updater\Updater.csproj", "{A3A98EE3-9C6B-47C0-AD07-2B3EEAB5C1D4}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -17,10 +15,6 @@ Global
 		{E21D451C-4724-4738-A716-DD441AD38747}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E21D451C-4724-4738-A716-DD441AD38747}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E21D451C-4724-4738-A716-DD441AD38747}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A3A98EE3-9C6B-47C0-AD07-2B3EEAB5C1D4}.Debug|Any CPU.ActiveCfg = Release|Any CPU
-		{A3A98EE3-9C6B-47C0-AD07-2B3EEAB5C1D4}.Debug|Any CPU.Build.0 = Release|Any CPU
-		{A3A98EE3-9C6B-47C0-AD07-2B3EEAB5C1D4}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A3A98EE3-9C6B-47C0-AD07-2B3EEAB5C1D4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

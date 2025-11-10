@@ -1,4 +1,4 @@
-    <Window x:Class="ProgramaOTLauncher.MainWindow"
+<Window x:Class="ProgramaOTLauncher.MainWindow"
 		xmlns:system="clr-namespace:System;assembly=mscorlib"
 		xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 		xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -234,7 +234,7 @@
 							Durante este período, podem ocorrer alguns problemas; agradecemos sua<LineBreak/>
 							paciência e compreensão. Desejamos a você um ótimo jogo!<LineBreak/>
 							Novidades e comunicados serão publicados no nosso <Bold><Hyperlink NavigateUri="https://discord.gg/KUR3GAKE" RequestNavigate="Discord_RequestNavigate">Discord</Hyperlink></Bold>.
-						</TextBlock>
+                    </TextBlock>
                 </Grid>
 
             </Grid>
@@ -242,7 +242,7 @@
 
         <StackPanel
 			Grid.Row="2"
-			VerticalAlignment="Bottom">
+			VerticalAlignment="Top" Margin="0,103,0,0">
             <Grid>
 
                 <Grid.ColumnDefinitions>
@@ -272,27 +272,14 @@
                         Text="Version"/>
                     <Button
                             x:Name="buttonLauncherUpdate"
-                            Width="22"
-                            Height="22"
-                            Margin="8,10,0,0"
-                            VerticalAlignment="Center"
+                            Width="52"
+                            Height="20"
                             Visibility="Visible"
-                            ToolTip="Atualizar Launcher"
-                            Click="buttonLauncherUpdate_Click">
-                        <!-- Background temporário levemente visível para facilitar localizar o botão durante testes -->
-                        <Button.Background>
-                            <SolidColorBrush Color="#2000FF00"/>
-                        </Button.Background>
-                        <Button.BorderBrush>
-                            <SolidColorBrush Color="#00000000"/>
-                        </Button.BorderBrush>
-                        <Button.Content>
-                            <Image
-					x:Name="buttonLauncherUpdateIcon"
-					Source="{StaticResource IconUpdateKey}"
-					Stretch="Uniform"
-					Height="32"></Image>
-                        </Button.Content>
+                            Click="buttonLauncherUpdate_Click" Background="#2000FF00" BorderBrush="#00000000" Margin="9,0,0,0">
+                        <Button.ToolTip>
+                            <ToolTip x:Name="LauncherUpdateToolTip" Placement="Bottom"
+                                     Content="Atualização do Launcher disponível. Clique aqui para atualizar."/>
+                        </Button.ToolTip>
                         <Button.Style>
                             <Style TargetType="{x:Type Button}">
                                 <Setter Property="Template">
@@ -306,6 +293,20 @@
                                 </Setter>
                             </Style>
                         </Button.Style>
+                        <Image
+					x:Name="buttonLauncherUpdateIcon"
+					Source="{StaticResource IconUpdateKey}"
+					Stretch="Uniform"
+					Height="20" Width="8" RenderTransformOrigin="0.5,0.5" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Image.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform/>
+                                    <SkewTransform AngleX="0"/>
+                                    <RotateTransform/>
+                                    <TranslateTransform/>
+                                </TransformGroup>
+                            </Image.RenderTransform>
+                        </Image>
                     </Button>
                 </StackPanel>
                 <!-- Logo da empresa com ícone de atualização do Launcher ao lado -->
@@ -321,7 +322,7 @@
                         Height="42"
                         Stretch="Uniform"
                         Width="286"/>
-                    
+
                 </StackPanel>
             </Grid>
         </StackPanel>

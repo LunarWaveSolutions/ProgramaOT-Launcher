@@ -70,7 +70,7 @@ namespace ProgramaOTLauncher
 
                 info.ChecksumUrl = config.launcherChecksumUrl ?? "";
 
-                // Decide se há update: se tag diferente do installedVersion (quando installedVersion é SemVer compatível) OU se AssetUrl está disponível
+                // Decide se há update: somente se tag (latest) for MAIOR que a instalada
                 bool tagDiffers = false;
                 try
                 {
@@ -81,10 +81,8 @@ namespace ProgramaOTLauncher
                 }
                 catch { }
 
-                if (!string.IsNullOrWhiteSpace(info.AssetUrl) || tagDiffers)
-                {
-                    info.HasUpdate = true;
-                }
+                // Atualização disponível somente quando a versão/tag mais recente é maior que a instalada
+                info.HasUpdate = tagDiffers;
 
                 // Mandatory se installedVersion < launcherMinVersion
                 if (!string.IsNullOrWhiteSpace(config.launcherMinVersion) && !string.IsNullOrWhiteSpace(installedVersion))

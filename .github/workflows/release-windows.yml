@@ -35,19 +35,14 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $root = (Get-Location).Path
           $launcherOut = Join-Path $root 'bin' 'Release'
-          $updaterOut  = Join-Path $root 'Updater' 'bin' 'Release'
           $launcherZip = Join-Path $root 'ProgramaOT-Launcher-Release.zip'
-          $updaterZip  = Join-Path $root 'Updater-Release.zip'
           if (Test-Path $launcherZip) { Remove-Item $launcherZip -Force }
-          if (Test-Path $updaterZip)  { Remove-Item $updaterZip  -Force }
           Compress-Archive -Path "$launcherOut\*" -DestinationPath $launcherZip -Force
-          Compress-Archive -Path "$updaterOut\*"  -DestinationPath $updaterZip  -Force
 
       - name: Create GitHub Release and upload assets
         uses: softprops/action-gh-release@v1
         with:
           files: |
             ProgramaOT-Launcher-Release.zip
-            Updater-Release.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

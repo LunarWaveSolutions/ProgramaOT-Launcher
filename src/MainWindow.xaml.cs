@@ -117,10 +117,11 @@ namespace ProgramaOTLauncher
             ImageLogoServer.Source = new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/logo.png"));
             ImageLogoCompany.Source = new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/logo_company.png"));
 
-			progressbarDownload.Visibility = Visibility.Collapsed;
-			labelClientVersion.Visibility = Visibility.Collapsed;
-			labelDownloadPercent.Visibility = Visibility.Collapsed;
-			labelVersion.Text = "v" + programVersion;
+            progressbarDownload.Visibility = Visibility.Collapsed;
+            labelClientVersion.Visibility = Visibility.Collapsed;
+            labelDownloadPercent.Visibility = Visibility.Collapsed;
+            // Inicialmente mostra a versão configurada; será atualizada após obter a tag da release
+            labelVersion.Text = "v" + programVersion;
 
 			// Checagem de auto-update do Launcher
             try
@@ -134,9 +135,14 @@ namespace ProgramaOTLauncher
                 {
                     _pendingLauncherUpdate = luInfo;
                     buttonLauncherUpdate.Visibility = Visibility.Visible;
-                    buttonLauncherUpdate.ToolTip = string.IsNullOrWhiteSpace(luInfo.LatestTag)
+                    var ttUpdate = buttonLauncherUpdate.ToolTip as System.Windows.Controls.ToolTip;
+                    string ttText = string.IsNullOrWhiteSpace(luInfo.LatestTag)
                         ? "Atualizar Launcher"
                         : $"Atualizar Launcher (última: {luInfo.LatestTag})";
+                    if (ttUpdate != null)
+                        ttUpdate.Content = ttText;
+                    else
+                        buttonLauncherUpdate.ToolTip = ttText;
 
 					if (luInfo.Mandatory)
 					{
@@ -153,8 +159,13 @@ namespace ProgramaOTLauncher
 			}
 			catch { }
 
-			string installedTag = GetInstalledTag();
-			latestReleaseTag = await GetLatestReleaseTagAsync();
+            string installedTag = GetInstalledTag();
+            latestReleaseTag = await GetLatestReleaseTagAsync();
+            // Atualiza o label da versão para refletir a versão da release do site (Git)
+            if (!string.IsNullOrWhiteSpace(latestReleaseTag))
+            {
+                labelVersion.Text = NormalizeTagForDisplay(latestReleaseTag);
+            }
 
 			bool isClientFolderPresent = Directory.Exists(GetLauncherPath()) &&
 				(Directory.GetFiles(GetLauncherPath()).Length > 0 || Directory.GetDirectories(GetLauncherPath()).Length > 0);
@@ -309,6 +320,16 @@ namespace ProgramaOTLauncher
             return "";
         }
 
+        // Exibe a tag com prefixo "v" quando necessário, sem duplicar prefixo
+        private string NormalizeTagForDisplay(string tag)
+        {
+            if (string.IsNullOrWhiteSpace(tag)) return "";
+            var t = tag.Trim();
+            if (t.StartsWith("v", StringComparison.OrdinalIgnoreCase))
+                return t;
+            return "v" + t;
+        }
+
 		private void AddReadOnly()
 		{
 			// If the files "eventschedule/boostedcreature/onlinenumbers" exist, set them as read-only
@@ -324,7 +345,7 @@ namespace ProgramaOTLauncher
 			if (File.Exists(onlineNumbersPath)) {
 				File.SetAttributes(onlineNumbersPath, FileAttributes.ReadOnly);
 			}
-		}
+        }
 
         private async void UpdateClient()
         {
@@ -392,6 +413,29 @@ namespace ProgramaOTLauncher
 
 		private void buttonPlay_Click(object sender, RoutedEventArgs e)
 		{
+			// Se houver atualização de Launcher pendente, bloquear atualização do Client e orientar usuário
+			if (_pendingLauncherUpdate != null && _pendingLauncherUpdate.HasUpdate)
+			{
+				MessageBox.Show(
+					"Uma atualização do Launcher está disponível.\n\nAtualize o Launcher antes de atualizar o cliente.",
+					"Atualização necessária",
+					MessageBoxButton.OK,
+					MessageBoxImage.Information
+				);
+				// Abre um balão no ícone de atualização do Launcher para guiar o usuário
+				try
+				{
+					var tt = buttonLauncherUpdate.ToolTip as System.Windows.Controls.ToolTip;
+					if (tt != null)
+					{
+						System.Windows.Controls.ToolTipService.SetInitialShowDelay(buttonLauncherUpdate, 0);
+						System.Windows.Controls.ToolTipService.SetShowDuration(buttonLauncherUpdate, 5000);
+						tt.IsOpen = true;
+					}
+				}
+				catch { }
+				return;
+			}
 			if (needUpdate == true || !Directory.Exists(GetLauncherPath()))
 			{
 				try
@@ -642,46 +686,42 @@ namespace ProgramaOTLauncher
                     return;
                 }
 
-                // Persiste a tag/versão que está sendo instalada antes de iniciar o Updater (será usada como referência na próxima inicialização)
+                // Persiste a tag/versão que está sendo instalada antes de iniciar a aplicação da atualização
                 if (!string.IsNullOrWhiteSpace(luInfo.LatestTag))
                 {
                     SaveInstalledLauncherTag(luInfo.LatestTag);
                 }
 
-				// Localiza Updater.exe na pasta atual do Launcher
-				string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-				string updaterPath = System.IO.Path.Combine(baseDir, "Updater.exe");
-				if (!File.Exists(updaterPath))
-				{
-					MessageBox.Show("Updater.exe não encontrado. Inclua o Updater junto ao Launcher para aplicar a atualização.", "Atualização do Launcher", MessageBoxButton.OK, MessageBoxImage.Warning);
-					return;
-				}
+                // Aplica atualização usando o próprio launcher: inicia a nova versão a partir do payload com a flag --apply-update
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                string currentExeName = System.IO.Path.GetFileName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName);
+                string newLauncherExePath = System.IO.Path.Combine(payloadDir, currentExeName);
 
-				// Copia Updater.exe para tempDir (evita lock na pasta atual)
-				string tempUpdater = System.IO.Path.Combine(tempDir, "Updater.exe");
-				File.Copy(updaterPath, tempUpdater, true);
+                if (!System.IO.File.Exists(newLauncherExePath))
+                {
+                    MessageBox.Show("Não foi possível localizar a nova versão do launcher dentro do pacote baixado.", "Atualização do Launcher", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
 
-				// Parâmetros: source payload, destino baseDir, nome do exe do launcher, pid atual
-				string currentExeName = System.IO.Path.GetFileName(Assembly.GetExecutingAssembly().Location.Replace(".dll", ".exe"));
-				int pid = Process.GetCurrentProcess().Id;
-				string args = $"--source \"{payloadDir}\" --target \"{baseDir}\" --exe \"{currentExeName}\" --waitpid {pid}";
+                int pid = System.Diagnostics.Process.GetCurrentProcess().Id;
+                string args = $"--apply-update --source=\"{payloadDir}\" --target=\"{baseDir}\" --exe=\"{currentExeName}\" --waitpid {pid}";
 
-				try
-				{
-					Process.Start(new ProcessStartInfo
-					{
-						FileName = tempUpdater,
-						Arguments = args,
-						UseShellExecute = true
-					});
-				}
-				catch (Exception ex)
-				{
-					MessageBox.Show($"Falha ao iniciar Updater.exe: {ex.Message}", "Atualização do Launcher", MessageBoxButton.OK, MessageBoxImage.Error);
-					return;
-				}
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = newLauncherExePath,
+                        Arguments = args,
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Falha ao iniciar a aplicação da atualização: {ex.Message}", "Atualização do Launcher", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
 
-                // Encerra o Launcher para permitir substituição
+                // Encerra o Launcher atual para permitir a substituição dos arquivos
                 Application.Current.Shutdown();
             }
             catch (Exception ex)
