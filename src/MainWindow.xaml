@@ -1,11 +1,11 @@
-<Window x:Class="ProgramaOTLauncher.MainWindow"
+    <Window x:Class="ProgramaOTLauncher.MainWindow"
 		xmlns:system="clr-namespace:System;assembly=mscorlib"
 		xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 		xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 		xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 		xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 		xmlns:local="clr-namespace:ProgramaOTLauncher"
-		Icon="pack://application:,,,/Assets/launcher_ico.png"
+        Icon="pack://application:,,,/assets/launcher_ico.png"
 		mc:Ignorable="d" 
 		Height="400"
 		Width="800"
@@ -31,19 +31,19 @@
         </Grid.RowDefinitions>
 
         <Grid.Resources>
-            <BitmapImage x:Key="BackGroundKey" UriSource="pack://application:,,,/Assets/background.jpg"/>
-            <BitmapImage x:Key="LogoKey" UriSource="pack://application:,,,/Assets/logo.png"/>
-            <BitmapImage x:Key="LogoCompanyKey" UriSource="pack://application:,,,/Assets/logo_company.png"/>
-            <BitmapImage x:Key="BGButtonUpdateKey" UriSource="pack://application:,,,/Assets/bg_button_update.png"/>
-            <BitmapImage x:Key="ButtonPlayKey" UriSource="pack://application:,,,/Assets/button_play.png"/>
-            <BitmapImage x:Key="IconPlayKey" UriSource="pack://application:,,,/Assets/icon_play.png"/>
-            <BitmapImage x:Key="BgHintsKey" UriSource="pack://application:,,,/Assets/bg_hints.png"/>
-            <BitmapImage x:Key="RhLoreKey" UriSource="pack://application:,,,/Assets/rh_lore.png"/>
+            <BitmapImage x:Key="BackGroundKey" UriSource="pack://application:,,,/assets/background.jpg"/>
+            <BitmapImage x:Key="LogoKey" UriSource="pack://application:,,,/assets/logo.png"/>
+            <BitmapImage x:Key="LogoCompanyKey" UriSource="pack://application:,,,/assets/logo_company.png"/>
+            <BitmapImage x:Key="BGButtonUpdateKey" UriSource="pack://application:,,,/assets/bg_button_update.png"/>
+            <BitmapImage x:Key="ButtonPlayKey" UriSource="pack://application:,,,/assets/button_play.png"/>
+            <BitmapImage x:Key="IconPlayKey" UriSource="pack://application:,,,/assets/icon_play.png"/>
+            <BitmapImage x:Key="BgHintsKey" UriSource="pack://application:,,,/assets/bg_hints.png"/>
+            <BitmapImage x:Key="RhLoreKey" UriSource="pack://application:,,,/assets/rh_lore.png"/>
             <!-- Usa caminho em minúsculas para casar com os Resources incluídos no csproj (assets/...) -->
             <BitmapImage x:Key="IconUpdateKey" UriSource="pack://application:,,,/assets/icon_update.png"/>
         </Grid.Resources>
         <Grid.Background>
-            <ImageBrush ImageSource="{StaticResource BackGroundKey}" Stretch="UniformToFill" Opacity="100"></ImageBrush>
+            <ImageBrush ImageSource="{StaticResource BackGroundKey}" Stretch="UniformToFill" Opacity="1"></ImageBrush>
         </Grid.Background>
         <StackPanel
 			Grid.Column="1"
@@ -271,14 +271,14 @@
                         VerticalAlignment="Center"
                         Text="Version"/>
                     <Button
-    x:Name="buttonLauncherUpdate"
-    Width="22"
-    Height="22"
-    Margin="8,0,0,0"
-    VerticalAlignment="Center"
-    Visibility="Visible"
-    ToolTip="Atualizar Launcher"
-    Click="buttonLauncherUpdate_Click">
+                            x:Name="buttonLauncherUpdate"
+                            Width="22"
+                            Height="22"
+                            Margin="8,10,0,0"
+                            VerticalAlignment="Center"
+                            Visibility="Visible"
+                            ToolTip="Atualizar Launcher"
+                            Click="buttonLauncherUpdate_Click">
                         <!-- Background temporário levemente visível para facilitar localizar o botão durante testes -->
                         <Button.Background>
                             <SolidColorBrush Color="#2000FF00"/>
@@ -286,11 +286,13 @@
                         <Button.BorderBrush>
                             <SolidColorBrush Color="#00000000"/>
                         </Button.BorderBrush>
-                        <Image
-        Source="{StaticResource IconUpdateKey}"
-        Stretch="Uniform"
-        Width="18"
-        Height="18"/>
+                        <Button.Content>
+                            <Image
+					x:Name="buttonLauncherUpdateIcon"
+					Source="{StaticResource IconUpdateKey}"
+					Stretch="Uniform"
+					Height="32"></Image>
+                        </Button.Content>
                         <Button.Style>
                             <Style TargetType="{x:Type Button}">
                                 <Setter Property="Template">

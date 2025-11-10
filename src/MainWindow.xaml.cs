@@ -39,17 +39,54 @@ namespace ProgramaOTLauncher
         static readonly HttpClient httpClient = new HttpClient();
 		WebClient webClient = new WebClient();
 
-		private string GetLauncherPath(bool onlyBaseDirectory = false)
-		{
-			string launcherPath = "";
-			if (string.IsNullOrEmpty(clientConfig.clientFolder) || onlyBaseDirectory) {
-				launcherPath = AppDomain.CurrentDomain.BaseDirectory.ToString();
-			} else {
-				launcherPath = AppDomain.CurrentDomain.BaseDirectory.ToString() + "/" + clientConfig.clientFolder;
-			}
+        private string GetLauncherPath(bool onlyBaseDirectory = false)
+        {
+            string launcherPath = "";
+            if (string.IsNullOrEmpty(clientConfig.clientFolder) || onlyBaseDirectory) {
+                launcherPath = AppDomain.CurrentDomain.BaseDirectory.ToString();
+            } else {
+                launcherPath = AppDomain.CurrentDomain.BaseDirectory.ToString() + "/" + clientConfig.clientFolder;
+            }
 
-			return launcherPath;
-		}
+            return launcherPath;
+        }
+
+        // ===== Persistência da versão/tag do Launcher instalada =====
+        private string LaunchVersionsJsonPath()
+        {
+            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "launchversions.json");
+        }
+
+        private string GetInstalledLauncherTag()
+        {
+            try
+            {
+                var path = LaunchVersionsJsonPath();
+                if (!File.Exists(path)) return "";
+                var text = File.ReadAllText(path);
+                var obj = JsonConvert.DeserializeObject<Dictionary<string, object>>(text);
+                if (obj != null && obj.ContainsKey("installedLauncherTag") && obj["installedLauncherTag"] != null)
+                {
+                    return obj["installedLauncherTag"].ToString();
+                }
+            }
+            catch { }
+            return "";
+        }
+
+        private void SaveInstalledLauncherTag(string tag)
+        {
+            try
+            {
+                var payload = new Dictionary<string, object>
+                {
+                    {"installedLauncherTag", tag ?? string.Empty},
+                    {"installedAt", DateTime.UtcNow.ToString("o")}
+                };
+                File.WriteAllText(LaunchVersionsJsonPath(), JsonConvert.SerializeObject(payload, Formatting.Indented));
+            }
+            catch { }
+        }
 
 		public MainWindow()
 		{
@@ -75,10 +112,10 @@ namespace ProgramaOTLauncher
 			}
 		}
 
-		private async void TibiaLauncher_Load(object sender, RoutedEventArgs e)
-		{
-			ImageLogoServer.Source = new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/Assets/logo.png"));
-			ImageLogoCompany.Source = new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/Assets/logo_company.png"));
+        private async void TibiaLauncher_Load(object sender, RoutedEventArgs e)
+        {
+            ImageLogoServer.Source = new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/logo.png"));
+            ImageLogoCompany.Source = new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/logo_company.png"));
 
 			progressbarDownload.Visibility = Visibility.Collapsed;
 			labelClientVersion.Visibility = Visibility.Collapsed;
@@ -86,17 +123,20 @@ namespace ProgramaOTLauncher
 			labelVersion.Text = "v" + programVersion;
 
 			// Checagem de auto-update do Launcher
-			try
-			{
-				var luInfo = await LauncherUpdateService.CheckAsync(clientConfig, programVersion);
-				// Atualiza UI do ícone ao lado da versão
-				if (luInfo.HasUpdate)
-				{
-					_pendingLauncherUpdate = luInfo;
-					buttonLauncherUpdate.Visibility = Visibility.Visible;
-					buttonLauncherUpdate.ToolTip = string.IsNullOrWhiteSpace(luInfo.LatestTag)
-						? "Atualizar Launcher"
-						: $"Atualizar Launcher (última: {luInfo.LatestTag})";
+            try
+            {
+                // Decide versão instalada do Launcher: prefere a persistida em launchversions.json; fallback para clientConfig.launcherVersion
+                var installedLauncherTag = GetInstalledLauncherTag();
+                var versionForCompare = string.IsNullOrWhiteSpace(installedLauncherTag) ? programVersion : installedLauncherTag;
+                var luInfo = await LauncherUpdateService.CheckAsync(clientConfig, versionForCompare);
+                // Atualiza UI do ícone ao lado da versão
+                if (luInfo.HasUpdate)
+                {
+                    _pendingLauncherUpdate = luInfo;
+                    buttonLauncherUpdate.Visibility = Visibility.Visible;
+                    buttonLauncherUpdate.ToolTip = string.IsNullOrWhiteSpace(luInfo.LatestTag)
+                        ? "Atualizar Launcher"
+                        : $"Atualizar Launcher (última: {luInfo.LatestTag})";
 
 					if (luInfo.Mandatory)
 					{
@@ -122,8 +162,8 @@ namespace ProgramaOTLauncher
 			if (!isClientFolderPresent)
 			{
 				// No client installed: prompt Download
-				buttonPlay.Background = new ImageBrush(new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/Assets/button_update.png")));
-				buttonPlayIcon.Source = new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/Assets/icon_update.png"));
+				buttonPlay.Background = new ImageBrush(new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/button_update.png")));
+				buttonPlayIcon.Source = new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/icon_update.png"));
 				labelClientVersion.Content = "Download";
 				labelClientVersion.Visibility = Visibility.Visible;
 				buttonPlay.Visibility = Visibility.Visible;
@@ -135,15 +175,15 @@ namespace ProgramaOTLauncher
 				// Client folder exists: compare installed tag vs latest tag
 				if (!string.IsNullOrEmpty(latestReleaseTag) && !string.IsNullOrEmpty(installedTag) && latestReleaseTag == installedTag)
 				{
-					buttonPlay.Background = new ImageBrush(new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/Assets/button_play.png")));
-					buttonPlayIcon.Source = new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/Assets/icon_play.png"));
+					buttonPlay.Background = new ImageBrush(new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/button_play.png")));
+					buttonPlayIcon.Source = new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/icon_play.png"));
 					buttonPlay_tooltip.Text = "Play";
 					needUpdate = false;
 				}
 				else
 				{
-					buttonPlay.Background = new ImageBrush(new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/Assets/button_update.png")));
-					buttonPlayIcon.Source = new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/Assets/icon_update.png"));
+					buttonPlay.Background = new ImageBrush(new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/button_update.png")));
+					buttonPlayIcon.Source = new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/icon_update.png"));
 					labelClientVersion.Content = "Update";
 					labelClientVersion.Visibility = Visibility.Visible;
 					buttonPlay.Visibility = Visibility.Visible;
@@ -158,7 +198,18 @@ namespace ProgramaOTLauncher
         {
             if (_pendingLauncherUpdate != null && _pendingLauncherUpdate.HasUpdate)
             {
-                // Para atualizações opcionais, executa ao clicar
+                // Para atualizações opcionais, perguntar antes de iniciar
+                if (!_pendingLauncherUpdate.Mandatory)
+                {
+                    string msg = "Uma atualização do Launcher está disponível.";
+                    if (!string.IsNullOrWhiteSpace(_pendingLauncherUpdate.LatestTag))
+                        msg += $"\nÚltima versão/tag: {_pendingLauncherUpdate.LatestTag}";
+                    msg += "\n\nDeseja iniciar a atualização agora?";
+                    var result = MessageBox.Show(msg, "Atualização do Launcher", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    if (result != MessageBoxResult.Yes)
+                        return;
+                }
+
                 await UpdateLauncherAsync(_pendingLauncherUpdate);
                 // O app será encerrado pelo Updater
             }
@@ -386,8 +437,8 @@ namespace ProgramaOTLauncher
 
 		private async void Client_DownloadFileCompleted(object sender, System.ComponentModel.AsyncCompletedEventArgs e)
 		{
-			buttonPlay.Background = new ImageBrush(new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/Assets/button_play.png")));
-			buttonPlayIcon.Source = new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/Assets/icon_play.png"));
+            buttonPlay.Background = new ImageBrush(new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/button_play.png")));
+            buttonPlayIcon.Source = new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/icon_play.png"));
 
 			if (clientConfig.replaceFolders)
 			{
@@ -470,17 +521,17 @@ namespace ProgramaOTLauncher
 		private void buttonPlay_MouseEnter(object sender, MouseEventArgs e)
 		{
 			if (needUpdate)
-				buttonPlay.Background = new ImageBrush(new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/Assets/button_hover_update.png")));
+            buttonPlay.Background = new ImageBrush(new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/button_hover_update.png")));
 			else
-				buttonPlay.Background = new ImageBrush(new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/Assets/button_hover_play.png")));
+            buttonPlay.Background = new ImageBrush(new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/button_hover_play.png")));
 		}
 
 		private void buttonPlay_MouseLeave(object sender, MouseEventArgs e)
 		{
 			if (needUpdate)
-				buttonPlay.Background = new ImageBrush(new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/Assets/button_update.png")));
+            buttonPlay.Background = new ImageBrush(new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/button_update.png")));
 			else
-				buttonPlay.Background = new ImageBrush(new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/Assets/button_play.png")));
+            buttonPlay.Background = new ImageBrush(new BitmapImage(new Uri(BaseUriHelper.GetBaseUri(this), "pack://application:,,,/assets/button_play.png")));
 		}
 
 		private void CloseButton_Click(object sender, RoutedEventArgs e)
@@ -505,15 +556,15 @@ namespace ProgramaOTLauncher
 		}
 
 		// ===== Atualização do Launcher =====
-		private async Task UpdateLauncherAsync(LauncherUpdateInfo luInfo)
-		{
-			try
-			{
-				if (luInfo == null || string.IsNullOrWhiteSpace(luInfo.AssetUrl))
-				{
-					MessageBox.Show("Não foi possível localizar o pacote de atualização do Launcher.", "Atualização do Launcher", MessageBoxButton.OK, MessageBoxImage.Warning);
-					return;
-				}
+        private async Task UpdateLauncherAsync(LauncherUpdateInfo luInfo)
+        {
+            try
+            {
+                if (luInfo == null || string.IsNullOrWhiteSpace(luInfo.AssetUrl))
+                {
+                    MessageBox.Show("Não foi possível localizar o pacote de atualização do Launcher.", "Atualização do Launcher", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
 
 				// Pasta temporária
 				string tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ProgramaOTLauncherUpdate");
@@ -571,25 +622,31 @@ namespace ProgramaOTLauncher
 					catch { /* Em caso de falha de checksum, segue sem bloquear se não for obrigatório */ }
 				}
 
-				// Extrai para tempDir\payload
-				string payloadDir = System.IO.Path.Combine(tempDir, "payload");
-				if (Directory.Exists(payloadDir)) Directory.Delete(payloadDir, true);
-				Directory.CreateDirectory(payloadDir);
-				try
-				{
-					using (Ionic.Zip.ZipFile zf = Ionic.Zip.ZipFile.Read(zipPath))
-					{
-						foreach (var entry in zf)
-						{
-							entry.Extract(payloadDir, ExtractExistingFileAction.OverwriteSilently);
-						}
-					}
-				}
-				catch (Exception ex)
-				{
-					MessageBox.Show($"Falha ao extrair atualização do Launcher: {ex.Message}", "Atualização do Launcher", MessageBoxButton.OK, MessageBoxImage.Error);
-					return;
-				}
+                // Extrai para tempDir\payload
+                string payloadDir = System.IO.Path.Combine(tempDir, "payload");
+                if (Directory.Exists(payloadDir)) Directory.Delete(payloadDir, true);
+                Directory.CreateDirectory(payloadDir);
+                try
+                {
+                    using (Ionic.Zip.ZipFile zf = Ionic.Zip.ZipFile.Read(zipPath))
+                    {
+                        foreach (var entry in zf)
+                        {
+                            entry.Extract(payloadDir, ExtractExistingFileAction.OverwriteSilently);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Falha ao extrair atualização do Launcher: {ex.Message}", "Atualização do Launcher", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // Persiste a tag/versão que está sendo instalada antes de iniciar o Updater (será usada como referência na próxima inicialização)
+                if (!string.IsNullOrWhiteSpace(luInfo.LatestTag))
+                {
+                    SaveInstalledLauncherTag(luInfo.LatestTag);
+                }
 
 				// Localiza Updater.exe na pasta atual do Launcher
 				string baseDir = AppDomain.CurrentDomain.BaseDirectory;
@@ -624,14 +681,14 @@ namespace ProgramaOTLauncher
 					return;
 				}
 
-				// Encerra o Launcher para permitir substituição
-				Application.Current.Shutdown();
-			}
-			catch (Exception ex)
-			{
-				MessageBox.Show(ex.Message, "Atualização do Launcher", MessageBoxButton.OK, MessageBoxImage.Error);
-			}
-		}
+                // Encerra o Launcher para permitir substituição
+                Application.Current.Shutdown();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Atualização do Launcher", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
 
 		private static string ComputeSha256(string filePath)
 		{

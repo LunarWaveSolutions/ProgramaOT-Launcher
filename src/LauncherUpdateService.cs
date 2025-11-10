@@ -70,8 +70,18 @@ namespace ProgramaOTLauncher
 
                 info.ChecksumUrl = config.launcherChecksumUrl ?? "";
 
-                // Decide se há update: se tag diferente do installedVersion (quando installedVersion é SemVer compatível) ou se AssetUrl está disponível
-                if (!string.IsNullOrWhiteSpace(info.AssetUrl))
+                // Decide se há update: se tag diferente do installedVersion (quando installedVersion é SemVer compatível) OU se AssetUrl está disponível
+                bool tagDiffers = false;
+                try
+                {
+                    var cur = NormalizeVersion(installedVersion);
+                    var latest = NormalizeVersion(CleanTag(latestTag));
+                    if (cur != null && latest != null && latest > cur)
+                        tagDiffers = true;
+                }
+                catch { }
+
+                if (!string.IsNullOrWhiteSpace(info.AssetUrl) || tagDiffers)
                 {
                     info.HasUpdate = true;
                 }
@@ -109,6 +119,16 @@ namespace ProgramaOTLauncher
             if (parts.Length == 2) v += ".0";
             if (Version.TryParse(v, out var ver)) return ver;
             return null;
+        }
+
+        // Remove prefixo "v" ou "V" de tags (ex.: "v1.0.0" -> "1.0.0") para comparação SemVer
+        private static string CleanTag(string t)
+        {
+            if (string.IsNullOrWhiteSpace(t)) return t;
+            t = t.Trim();
+            if (t.StartsWith("v", StringComparison.OrdinalIgnoreCase))
+                t = t.Substring(1);
+            return t;
         }
     }
 }
