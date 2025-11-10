@@ -24,10 +24,10 @@ jobs:
           dotnet-version: 8.0.x
 
       - name: Restore
-        run: dotnet restore ProgramaOTLauncher.sln
+        run: msbuild ProgramaOTLauncher.sln /t:Restore /p:RuntimeIdentifier=win
 
       - name: Build Release
-        run: msbuild ProgramaOTLauncher.sln /t:Build /p:Configuration=Release
+        run: msbuild ProgramaOTLauncher.sln /t:Build /p:Configuration=Release /p:RuntimeIdentifier=win
 
       - name: Package artifacts (zip)
         shell: pwsh
@@ -51,4 +51,3 @@ jobs:
             Updater-Release.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

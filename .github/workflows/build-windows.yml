@@ -32,10 +32,10 @@ jobs:
         dotnet-version: 8.0.x
 
     - name: Restore NuGet packages
-      run: dotnet restore $env:SOLUTION_PATH
+      run: msbuild $env:SOLUTION_PATH /t:Restore /p:RuntimeIdentifier=win
 
     - name: Build solution (Release)
-      run: msbuild $env:SOLUTION_PATH /t:Build /p:Configuration=Release
+      run: msbuild $env:SOLUTION_PATH /t:Build /p:Configuration=Release /p:RuntimeIdentifier=win
 
     - name: Upload Launcher artifact (Release bin)
       uses: actions/upload-artifact@v4
