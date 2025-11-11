@@ -62,7 +62,9 @@ namespace ProgramaOTLauncher
 
             // CORREÇÃO: Verificar updates em ordem e com delay para garantir estabilidade
             await Task.Delay(500); // Pequeno delay para garantir UI estável
-            await CheckLauncherUpdateAndSyncButtonsAsync();
+            // DESATIVADO TEMPORARIAMENTE: não verificar atualização do Launcher.
+            // Para reativar, remova o comentário da linha abaixo.
+            // await CheckLauncherUpdateAndSyncButtonsAsync();
             await CheckClientUpdateAsync();
         }
 
