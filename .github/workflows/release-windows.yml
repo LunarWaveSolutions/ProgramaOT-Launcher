@@ -38,6 +38,28 @@ jobs:
       - name: Build Release
         run: msbuild ProgramaOTLauncher.sln /t:Build /p:Configuration=Release /p:RuntimeIdentifier=win
 
+      - name: Code sign executables (optional)
+        if: ${{ secrets.CODESIGN_CERT_B64 != '' && secrets.CODESIGN_CERT_PASSWORD != '' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Write-Host 'Decoding code signing certificate from secrets...'
+          $pfxPath = Join-Path (Get-Location).Path 'codesign.pfx'
+          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:CODESIGN_CERT_B64))
+          $launcherExe = Join-Path (Get-Location).Path 'bin' 'Release' 'ProgramaOT-Launcher.exe'
+          $helperExe   = Join-Path (Get-Location).Path 'bin' 'Release' 'UpdateLauncher' 'UpdaterHelper.exe'
+          $signtool = 'signtool.exe'
+          $timestamp = 'http://timestamp.digicert.com'
+          if (Test-Path $launcherExe) {
+            & $signtool sign /f $pfxPath /p $env:CODESIGN_CERT_PASSWORD /fd SHA256 /tr $timestamp /td SHA256 $launcherExe
+          }
+          if (Test-Path $helperExe) {
+            & $signtool sign /f $pfxPath /p $env:CODESIGN_CERT_PASSWORD /fd SHA256 /tr $timestamp /td SHA256 $helperExe
+          }
+        env:
+          CODESIGN_CERT_B64: ${{ secrets.CODESIGN_CERT_B64 }}
+          CODESIGN_CERT_PASSWORD: ${{ secrets.CODESIGN_CERT_PASSWORD }}
+
       - name: Package artifacts (zip)
         shell: pwsh
         run: |

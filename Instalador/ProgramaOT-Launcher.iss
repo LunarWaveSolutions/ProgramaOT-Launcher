@@ -5,7 +5,8 @@ AppVerName=ProgramaOT Launcher 1.0.0
 AppVersion=1.0.0
 AppPublisher=ProgramaOT
 AppPublisherURL=https://programaot.shop
-DefaultDirName={userappdata}\ProgramaOT
+; Instalação por usuário em um local padrão para apps (menos propenso a falsos positivos)
+DefaultDirName={localappdata}\Programs\ProgramaOT
 DefaultGroupName=ProgramaOT
 OutputDir=j:\Projeto\Ot\ProgramaOT-Launcher\Instalador
 OutputBaseFilename=ProgramaOT-Installer
@@ -13,7 +14,8 @@ SetupIconFile=j:\Projeto\Ot\ProgramaOT-Launcher\icon.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
-PrivilegesRequired=none
+; Não requer privilégios de administrador; instala por usuário
+PrivilegesRequired=lowest
 DisableProgramGroupPage=yes
 DisableWelcomePage=no
 
@@ -28,7 +30,8 @@ UninstallDisplayIcon={app}\ProgramaOT-Launcher.exe
 Name: "br"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
 
 [Files]
-Source: "j:\Projeto\Ot\ProgramaOT-Launcher\bin\Debug\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion; Excludes: "Tibia\*"
+; Empacotar binários de Release (otimizado)
+Source: "j:\Projeto\Ot\ProgramaOT-Launcher\bin\Release\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion; Excludes: "Tibia\*"
 
 [Icons]
 Name: "{group}\ProgramaOT Launcher"; Filename: "{app}\ProgramaOT-Launcher.exe"; WorkingDir: "{app}"; IconFilename: "{app}\ProgramaOT-Launcher.exe"
