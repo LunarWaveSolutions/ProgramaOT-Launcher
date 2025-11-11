@@ -5,10 +5,10 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows;
-using Ionic.Zip;
 using Newtonsoft.Json;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
+using System.IO.Compression;
 
 namespace ProgramaOTLauncher
 {
@@ -246,34 +246,48 @@ namespace ProgramaOTLauncher
 
                 await Task.Run(() =>
                 {
-                    using (var zip = Ionic.Zip.ZipFile.Read(zipPath))
+                    using (var archive = ZipFile.OpenRead(zipPath))
                     {
-                        var entries = zip.Entries.Where(e => !e.IsDirectory).ToList();
-                        int totalEntries = entries.Count;
-                        long totalBytes = entries.Aggregate(0L, (acc, e) => acc + (long)e.UncompressedSize);
+                        var fileEntries = archive.Entries.Where(e => !e.FullName.EndsWith("/", StringComparison.Ordinal)).ToList();
+                        int totalEntries = fileEntries.Count;
+                        long totalBytes = fileEntries.Aggregate(0L, (acc, e) => acc + (long)e.Length);
                         long extractedBytes = 0;
                         int idx = 0;
 
-                        foreach (var entry in entries)
+                        string baseFull = Path.GetFullPath(payloadDir);
+
+                        foreach (var entry in fileEntries)
                         {
                             idx++;
 
                             // Atualiza o UI antes de extrair o arquivo atual
                             SetProgress(totalBytes > 0 ? (int)Math.Round(extractedBytes * 100.0 / totalBytes) : (int)Math.Round((idx - 1) * 100.0 / totalEntries),
                                 "Extraindo arquivos...",
-                                $"[{idx}/{totalEntries}] {entry.FileName} — {SizeSuffix(extractedBytes)} / {SizeSuffix(totalBytes)}");
+                                $"[{idx}/{totalEntries}] {entry.FullName} — {SizeSuffix(extractedBytes)} / {SizeSuffix(totalBytes)}");
 
                             try
                             {
-                                entry.Extract(payloadDir, Ionic.Zip.ExtractExistingFileAction.OverwriteSilently);
+                                var relativePath = entry.FullName.Replace('/', Path.DirectorySeparatorChar);
+                                var targetPath = Path.Combine(payloadDir, relativePath);
+                                var targetFull = Path.GetFullPath(targetPath);
+
+                                if (!targetFull.StartsWith(baseFull, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    Log($"Aviso: entrada ZIP com caminho suspeito ignorada: {entry.FullName}");
+                                }
+                                else
+                                {
+                                    Directory.CreateDirectory(Path.GetDirectoryName(targetFull));
+                                    entry.ExtractToFile(targetFull, overwrite: true);
+                                }
                             }
                             catch (Exception exEntry)
                             {
-                                Log($"Erro ao extrair '{entry.FileName}': {exEntry.Message}. Prosseguindo com as próximas entradas.");
+                                Log($"Erro ao extrair '{entry.FullName}': {exEntry.Message}. Prosseguindo com as próximas entradas.");
                                 // Não interromper o fluxo de extração
                             }
 
-                            extractedBytes += (long)entry.UncompressedSize;
+                            extractedBytes += (long)entry.Length;
                             int pct = 0;
                             if (totalBytes > 0)
                                 pct = (int)Math.Round(extractedBytes * 100.0 / totalBytes);
@@ -282,7 +296,7 @@ namespace ProgramaOTLauncher
 
                             // Atualiza o UI após extrair o arquivo atual
                             SetProgress(pct, "Extraindo arquivos...",
-                                $"[{idx}/{totalEntries}] {entry.FileName} — {SizeSuffix(extractedBytes)} / {SizeSuffix(totalBytes)}");
+                                $"[{idx}/{totalEntries}] {entry.FullName} — {SizeSuffix(extractedBytes)} / {SizeSuffix(totalBytes)}");
                         }
                     }
                 });

@@ -1,4 +1,3 @@
-using Ionic.Zip;
 using LauncherConfig;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -15,6 +14,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.IO.Compression;
 
 namespace ProgramaOTLauncher.componentes
 {
@@ -298,9 +298,12 @@ namespace ProgramaOTLauncher.componentes
 
         private void ExtractZipWithProgressSelective(string zipPath, string extractPath)
         {
-            using (ZipFile zip = ZipFile.Read(zipPath))
+            // Usa System.IO.Compression para evitar dependência externa (Ionic) e vulnerabilidades
+            using (var archive = ZipFile.OpenRead(zipPath))
             {
-                int total = zip.Entries.Count;
+                // Considera apenas entradas de arquivo para contagem
+                var entries = archive.Entries.ToList();
+                int total = entries.Count;
                 int processed = 0;
 
                 // Mensagem inicial
@@ -314,30 +317,40 @@ namespace ProgramaOTLauncher.componentes
                 }
                 catch { }
 
-                foreach (var entry in zip.Entries)
+                string baseFull = Path.GetFullPath(extractPath);
+
+                foreach (var entry in entries)
                 {
                     bool skipped = false;
                     try
                     {
-                        // Caminho alvo do arquivo/diretório
-                        var relativePath = entry.FileName.Replace('/', System.IO.Path.DirectorySeparatorChar);
-                        var targetPath = System.IO.Path.Combine(extractPath, relativePath);
+                        bool isDirectory = entry.FullName.EndsWith("/", StringComparison.Ordinal);
+                        var relativePath = entry.FullName.Replace('/', Path.DirectorySeparatorChar);
+                        var targetPath = Path.Combine(extractPath, relativePath);
+                        var targetFull = Path.GetFullPath(targetPath);
 
-                        if (entry.IsDirectory)
+                        // Mitiga path traversal
+                        if (!targetFull.StartsWith(baseFull, StringComparison.OrdinalIgnoreCase))
                         {
-                            // Garante o diretório
-                            try { System.IO.Directory.CreateDirectory(targetPath); } catch { }
+                            try { Logger.Warn($"Entrada ZIP com caminho suspeito ignorada: {entry.FullName}"); } catch { }
+                            skipped = true;
+                        }
+                        else if (isDirectory)
+                        {
+                            try { Directory.CreateDirectory(targetFull); } catch { }
                         }
                         else
                         {
+                            try { Directory.CreateDirectory(Path.GetDirectoryName(targetFull)); } catch { }
+
                             // Se o arquivo existir e o tamanho for igual ao tamanho descompactado do ZIP, não substituir
                             try
                             {
-                                if (System.IO.File.Exists(targetPath))
+                                if (File.Exists(targetFull))
                                 {
-                                    var fi = new System.IO.FileInfo(targetPath);
+                                    var fi = new FileInfo(targetFull);
                                     long existingSize = fi.Length;
-                                    long zipUncompressedSize = (long)entry.UncompressedSize;
+                                    long zipUncompressedSize = entry.Length; // tamanho descompactado
                                     if (existingSize == zipUncompressedSize)
                                     {
                                         skipped = true; // não altera
@@ -348,14 +361,14 @@ namespace ProgramaOTLauncher.componentes
 
                             if (!skipped)
                             {
-                                // Extrai com overwrite silencioso
-                                entry.Extract(extractPath, ExtractExistingFileAction.OverwriteSilently);
+                                // Extrai com overwrite
+                                entry.ExtractToFile(targetFull, overwrite: true);
                             }
                         }
                     }
                     catch (Exception exEntry)
                     {
-                        try { Logger.Error($"Falha ao processar entrada do ZIP: {entry.FileName}", exEntry); } catch { }
+                        try { Logger.Error($"Falha ao processar entrada do ZIP: {entry.FullName}", exEntry); } catch { }
                         // Continua com as próximas entradas
                     }
                     finally
@@ -367,7 +380,7 @@ namespace ProgramaOTLauncher.componentes
                             Application.Current?.Dispatcher?.Invoke(() =>
                             {
                                 _listener.SetDownloadPercentage(pct);
-                                _listener.SetDownloadStatus($"Aplicando atualização: {processed}/{total} - {entry.FileName} {(skipped ? "(sem alterações)" : "")}");
+                                _listener.SetDownloadStatus($"Aplicando atualização: {processed}/{total} - {entry.FullName} {(skipped ? "(sem alterações)" : "")}");
                             });
                         }
                         catch { }

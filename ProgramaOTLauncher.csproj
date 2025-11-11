@@ -85,6 +85,7 @@
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Core" />
+    <Reference Include="System.IO.Compression" />
     <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Net.Http" />
@@ -95,12 +96,12 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="DotNetZip">
-      <HintPath>lib\DotNetZip.dll</HintPath>
-    </Reference>
-    <Reference Include="Newtonsoft.Json">
-      <HintPath>lib\Newtonsoft.Json.dll</HintPath>
-    </Reference>
+    <!-- Referências de framework padrão -->
+  </ItemGroup>
+
+  <!-- Migrar bibliotecas para PackageReference para restaurar corretamente no CI -->
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
   <!-- Build do UpdaterHelper e cópia do executável sem ProjectReference (TFM incompatível com .NET Framework 4.8) -->
@@ -137,7 +138,7 @@
     </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <Target Name="ResolveNuGetPackageAssets" />
+  <!-- NÃO sobrescrever o alvo ResolveNuGetPackageAssets: permite que o NuGet/MSBuild resolva corretamente os assets de PackageReference -->
   
   <!-- Inputs para controlar build incremental da geração de versionlauncher.json -->
   <ItemGroup>
