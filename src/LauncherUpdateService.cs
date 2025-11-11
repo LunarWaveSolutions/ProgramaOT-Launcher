@@ -28,9 +28,8 @@ namespace ProgramaOTLauncher
             try
             {
                 if (string.IsNullOrWhiteSpace(config.launcherUpdateEndpoint))
-                    return info; // Sem endpoint, nada a fazer
+                    return info;
 
-                // GitHub requer User-Agent
                 httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("programaot-launcher");
                 var token = UpdateConfig.GitHubToken;
                 if (!string.IsNullOrWhiteSpace(token))
@@ -38,11 +37,9 @@ namespace ProgramaOTLauncher
                     httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("token", token);
                 }
 
-                // Extrai owner/repo a partir do endpoint de releases do launcher, se possível
                 var (ownerForLauncher, repoForLauncher) = ParseOwnerRepo(config.launcherUpdateEndpoint);
                 if (string.IsNullOrWhiteSpace(ownerForLauncher) || string.IsNullOrWhiteSpace(repoForLauncher))
                 {
-                    // Fallback para os valores padrão do cliente, caso parsing falhe
                     ownerForLauncher = UpdateConfig.Owner;
                     repoForLauncher = UpdateConfig.Repo;
                 }
@@ -66,12 +63,10 @@ namespace ProgramaOTLauncher
                     if (asset != null)
                     {
                         info.AssetName = config.launcherAssetName;
-                        // Para repositórios públicos, browser_download_url funciona; para privados, ideal é usar API de assets com Accept: application/octet-stream
                         info.AssetUrl = asset.Value<string>("browser_download_url") ?? "";
                         var idToken = asset.Value<int?>("id");
                         if (idToken.HasValue)
                         {
-                            // API de assets para download com Authorization (repo privado)
                             info.AssetApiUrl = $"https://api.github.com/repos/{ownerForLauncher}/{repoForLauncher}/releases/assets/{idToken.Value}";
                         }
                     }
@@ -79,65 +74,187 @@ namespace ProgramaOTLauncher
 
                 info.ChecksumUrl = config.launcherChecksumUrl ?? "";
 
-                // Decide se há update: somente se tag (latest) for MAIOR que a instalada
-                bool tagDiffers = false;
+                // CORREÇÃO CRÍTICA: Comparação robusta de versões
+                bool hasUpdate = CompareVersions(installedVersion, latestTag);
+                info.HasUpdate = hasUpdate;
+
                 try
                 {
-                    var cur = NormalizeVersion(installedVersion);
-                    var latest = NormalizeVersion(CleanTag(latestTag));
-                    if (cur != null && latest != null && latest > cur)
-                        tagDiffers = true;
+                    Logger.Info($"LauncherUpdateService.CheckAsync: installedVersion='{installedVersion}', latestTag='{latestTag}', hasUpdate={hasUpdate}");
                 }
                 catch { }
-
-                // Fallback para tags não SemVer: se não conseguir normalizar, considerar diferença de texto como update
-                if (!tagDiffers)
-                {
-                    var curText = CleanTag(installedVersion);
-                    var latestText = CleanTag(latestTag);
-                    if (!string.IsNullOrWhiteSpace(curText) && !string.IsNullOrWhiteSpace(latestText)
-                        && !string.Equals(curText, latestText, StringComparison.OrdinalIgnoreCase))
-                    {
-                        tagDiffers = true;
-                    }
-                }
-
-                // Atualização disponível quando detectamos diferença
-                info.HasUpdate = tagDiffers;
 
                 // Mandatory se installedVersion < launcherMinVersion
                 if (!string.IsNullOrWhiteSpace(config.launcherMinVersion) && !string.IsNullOrWhiteSpace(installedVersion))
                 {
                     try
                     {
-                        var cur = NormalizeVersion(installedVersion);
-                        var min = NormalizeVersion(config.launcherMinVersion);
-                        if (cur != null && min != null && cur < min)
+                        if (CompareVersions(installedVersion, config.launcherMinVersion))
                         {
                             info.Mandatory = true;
-                            info.HasUpdate = true; // se é obrigatório, há update
+                            info.HasUpdate = true;
                         }
                     }
                     catch { }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Não falha o launcher em caso de erro de checagem
+                try
+                {
+                    Logger.Error("Erro ao verificar atualização do launcher", ex);
+                }
+                catch { }
             }
             return info;
         }
 
-        // Tenta extrair owner e repo de uma URL do GitHub API do tipo
-        // https://api.github.com/repos/{owner}/{repo}/releases/latest
+        /// <summary>
+        /// Compara duas versões e retorna true se 'installed' é MENOR que 'latest' (precisa atualizar)
+        /// </summary>
+        private static bool CompareVersions(string installed, string latest)
+        {
+            try
+            {
+                var cleanInstalled = CleanTag(installed);
+                var cleanLatest = CleanTag(latest);
+
+                // Log para debug
+                try
+                {
+                    Logger.Info($"CompareVersions: cleanInstalled='{cleanInstalled}', cleanLatest='{cleanLatest}'");
+                }
+                catch { }
+
+                // Se forem exatamente iguais, não tem update
+                if (string.Equals(cleanInstalled, cleanLatest, StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+
+                // Tenta comparar como versões numéricas (1.0, 2.0, etc)
+                var installedVer = TryParseVersion(cleanInstalled);
+                var latestVer = TryParseVersion(cleanLatest);
+
+                if (installedVer != null && latestVer != null)
+                {
+                    bool needsUpdate = latestVer > installedVer;
+                    try
+                    {
+                        Logger.Info($"CompareVersions: Comparação numérica - {installedVer} vs {latestVer} = {needsUpdate}");
+                    }
+                    catch { }
+                    return needsUpdate;
+                }
+
+                // Tenta comparar como timestamps (formato: 20251110-0756)
+                var installedTimestamp = TryParseTimestamp(cleanInstalled);
+                var latestTimestamp = TryParseTimestamp(cleanLatest);
+
+                if (installedTimestamp != null && latestTimestamp != null)
+                {
+                    bool needsUpdate = latestTimestamp > installedTimestamp;
+                    try
+                    {
+                        Logger.Info($"CompareVersions: Comparação timestamp - {installedTimestamp} vs {latestTimestamp} = {needsUpdate}");
+                    }
+                    catch { }
+                    return needsUpdate;
+                }
+
+                // Se um é timestamp e outro é versão numérica, timestamp é sempre mais novo
+                if (latestTimestamp != null && installedVer != null)
+                {
+                    try
+                    {
+                        Logger.Info($"CompareVersions: Latest é timestamp, installed é versão numérica - assume update=true");
+                    }
+                    catch { }
+                    return true;
+                }
+
+                // Se não conseguiu comparar de forma estruturada, compara como string
+                bool stringDiffers = !string.Equals(cleanInstalled, cleanLatest, StringComparison.OrdinalIgnoreCase);
+                try
+                {
+                    Logger.Info($"CompareVersions: Fallback para comparação string - {stringDiffers}");
+                }
+                catch { }
+                return stringDiffers;
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    Logger.Error($"Erro ao comparar versões: '{installed}' vs '{latest}'", ex);
+                }
+                catch { }
+                // Em caso de erro, assume que não tem update (safer)
+                return false;
+            }
+        }
+
+        // Tenta fazer parse de versão numérica (ex: "1.0", "2.1.3")
+        private static Version TryParseVersion(string versionStr)
+        {
+            if (string.IsNullOrWhiteSpace(versionStr))
+                return null;
+
+            // Remove qualquer caractere não numérico ou ponto
+            var cleaned = new string(versionStr.Where(c => char.IsDigit(c) || c == '.').ToArray());
+            if (string.IsNullOrWhiteSpace(cleaned))
+                return null;
+
+            // Garante pelo menos major.minor
+            var parts = cleaned.Split('.');
+            if (parts.Length == 1)
+                cleaned += ".0";
+
+            if (Version.TryParse(cleaned, out var ver))
+                return ver;
+
+            return null;
+        }
+
+        // Tenta fazer parse de timestamp (formato: YYYYMMDD-HHMM ou variações)
+        private static DateTime? TryParseTimestamp(string timestampStr)
+        {
+            if (string.IsNullOrWhiteSpace(timestampStr))
+                return null;
+
+            // Formato esperado: 20251110-0756 (YYYYMMDD-HHMM)
+            var cleaned = new string(timestampStr.Where(c => char.IsDigit(c) || c == '-').ToArray());
+
+            // Tenta diferentes formatos
+            var formats = new[]
+            {
+                "yyyyMMdd-HHmm",   // 20251110-0756
+                "yyyyMMdd",         // 20251110
+                "yyyyMMddHHmm",     // 202511100756
+                "yyyy-MM-dd-HHmm"   // 2025-11-10-0756
+            };
+
+            foreach (var format in formats)
+            {
+                if (DateTime.TryParseExact(cleaned, format,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None,
+                    out var dt))
+                {
+                    return dt;
+                }
+            }
+
+            return null;
+        }
+
         private static (string owner, string repo) ParseOwnerRepo(string endpoint)
         {
             try
             {
                 if (string.IsNullOrWhiteSpace(endpoint)) return ("", "");
                 var uri = new Uri(endpoint);
-                // Espera path com segmentos: ["repos", owner, repo, ...]
-                var segments = uri.AbsolutePath.Split(new[] {'/'}, StringSplitOptions.RemoveEmptyEntries);
+                var segments = uri.AbsolutePath.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
                 var reposIdx = Array.IndexOf(segments, "repos");
                 if (reposIdx >= 0 && reposIdx + 2 < segments.Length)
                 {
@@ -150,22 +267,9 @@ namespace ProgramaOTLauncher
             return ("", "");
         }
 
-        // Normaliza versões tipo "1.0" ou "1.0.0" em System.Version
-        private static Version NormalizeVersion(string v)
-        {
-            if (string.IsNullOrWhiteSpace(v)) return null;
-            // Garante ter ao menos major.minor
-            var parts = v.Split('.');
-            if (parts.Length == 1) v += ".0";
-            if (parts.Length == 2) v += ".0";
-            if (Version.TryParse(v, out var ver)) return ver;
-            return null;
-        }
-
-        // Remove prefixo "v" ou "V" de tags (ex.: "v1.0.0" -> "1.0.0") para comparação SemVer
         private static string CleanTag(string t)
         {
-            if (string.IsNullOrWhiteSpace(t)) return t;
+            if (string.IsNullOrWhiteSpace(t)) return "";
             t = t.Trim();
             if (t.StartsWith("auto-", StringComparison.OrdinalIgnoreCase))
                 t = t.Substring("auto-".Length);

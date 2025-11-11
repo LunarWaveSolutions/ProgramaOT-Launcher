@@ -39,9 +39,9 @@ namespace ProgramaOTLauncher
             _programVersion = _clientConfig.launcherVersion;
 
             _atualizaLauncher = new AtualizaLauncher(
-                _clientConfig, 
-                _programVersion, 
-                GetInstalledLauncherTag, 
+                _clientConfig,
+                _programVersion,
+                GetInstalledLauncherTag,
                 SaveInstalledLauncherTag
             );
 
@@ -60,6 +60,8 @@ namespace ProgramaOTLauncher
 
             ApplyPostStartupEnvironmentSettings();
 
+            // CORREÇÃO: Verificar updates em ordem e com delay para garantir estabilidade
+            await Task.Delay(500); // Pequeno delay para garantir UI estável
             await CheckLauncherUpdateAndSyncButtonsAsync();
             await CheckClientUpdateAsync();
         }
@@ -79,6 +81,7 @@ namespace ProgramaOTLauncher
             progressbarDownload.Visibility = Visibility.Collapsed;
             labelClientVersion.Visibility = Visibility.Collapsed;
             labelDownloadPercent.Visibility = Visibility.Collapsed;
+            buttonLauncherUpdate.Visibility = Visibility.Collapsed; // Sempre começa oculto
         }
 
         private BitmapImage LoadImage(string uri)
@@ -129,13 +132,13 @@ namespace ProgramaOTLauncher
         private void UpdateLauncherVersionLabel(string installedTag)
         {
             var cleanInstalled = CleanLauncherTag(installedTag);
-            var displayVersion = string.IsNullOrWhiteSpace(cleanInstalled) 
-                ? CleanLauncherTag(_programVersion) 
+            var displayVersion = string.IsNullOrWhiteSpace(cleanInstalled)
+                ? CleanLauncherTag(_programVersion)
                 : cleanInstalled;
 
-            labelLauncherVersion.Text = string.IsNullOrWhiteSpace(displayVersion) 
-                ? "v?" 
-                : $"v{displayVersion}";
+            labelLauncherVersion.Text = string.IsNullOrWhiteSpace(displayVersion)
+                ? "Launcher v?"
+                : $"Launcher v{displayVersion}";
 
             try
             {
@@ -152,17 +155,27 @@ namespace ProgramaOTLauncher
         {
             try
             {
-                // Usar somente o arquivo versionlauncher.json
+                var path = GetVersionLauncherJsonPath();
+                Logger.Info($"GetInstalledLauncherTag: Lendo de {path}");
+
+                // CORREÇÃO: Forçar re-leitura do arquivo para pegar valores atualizados
                 var tag = TryGetTagFromVersionLauncherJson();
                 if (!string.IsNullOrWhiteSpace(tag))
+                {
+                    Logger.Info($"GetInstalledLauncherTag: Lido do versionlauncher.json = '{tag}'");
                     return tag;
+                }
+
+                // Fallback para programVersion se arquivo não existe (primeira execução)
+                Logger.Info($"GetInstalledLauncherTag: versionlauncher.json não existe, usando programVersion = '{_programVersion}'");
+                return _programVersion;
             }
             catch (Exception ex)
             {
                 LogError("Erro ao obter tag do launcher instalado", ex);
             }
 
-            return string.Empty;
+            return _programVersion;
         }
 
         private string TryGetTagFromVersionLauncherJson()
@@ -171,31 +184,41 @@ namespace ProgramaOTLauncher
             if (!File.Exists(path))
                 return null;
 
-            var content = File.ReadAllText(path);
-            var obj = JsonConvert.DeserializeObject<Dictionary<string, object>>(content);
-
-            if (obj?.ContainsKey("versionTag") == true && obj["versionTag"] != null)
+            try
             {
-                return CleanLauncherTag(obj["versionTag"].ToString());
+                var content = File.ReadAllText(path);
+                var obj = JsonConvert.DeserializeObject<Dictionary<string, object>>(content);
+
+                if (obj?.ContainsKey("versionTag") == true && obj["versionTag"] != null)
+                {
+                    var tag = obj["versionTag"].ToString();
+                    return CleanLauncherTag(tag);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError($"Erro ao ler versionTag de {path}", ex);
             }
 
             return null;
         }
 
-        
-
         private void SaveInstalledLauncherTag(string tag)
         {
             try
             {
+                var cleanTag = CleanLauncherTag(tag);
                 var payload = new Dictionary<string, object>
                 {
-                    { "versionTag", CleanLauncherTag(tag) },
+                    { "versionTag", cleanTag },
                     { "installedAtUtc", DateTime.UtcNow.ToString("o") }
                 };
 
                 var json = JsonConvert.SerializeObject(payload, Formatting.Indented);
-                File.WriteAllText(GetVersionLauncherJsonPath(), json);
+                var path = GetVersionLauncherJsonPath();
+
+                File.WriteAllText(path, json);
+                Logger.Info($"SaveInstalledLauncherTag: Salvou versionTag='{cleanTag}' em {path}");
             }
             catch (Exception ex)
             {
@@ -207,17 +230,16 @@ namespace ProgramaOTLauncher
         {
             try
             {
-
                 var versionPath = GetVersionLauncherJsonPath();
                 if (File.Exists(versionPath))
-                    return;
-
-                var tag = GetInstalledLauncherTag();
-                if (string.IsNullOrWhiteSpace(tag))
                 {
-                    tag = GetFallbackVersionTag();
+                    Logger.Info("EnsureVersionFilesPresentIfMissing: versionlauncher.json já existe");
+                    return;
                 }
 
+                Logger.Info("EnsureVersionFilesPresentIfMissing: Criando versionlauncher.json inicial");
+
+                var tag = GetFallbackVersionTag();
                 SaveInstalledLauncherTag(tag);
             }
             catch (Exception ex)
@@ -238,7 +260,7 @@ namespace ProgramaOTLauncher
             }
             catch
             {
-                return "unknown";
+                return "1.0";
             }
         }
 
@@ -262,8 +284,6 @@ namespace ProgramaOTLauncher
 
         #region Caminhos de Arquivo
 
-        
-
         private string GetVersionLauncherJsonPath()
         {
             return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, VersionLauncherJsonFileName);
@@ -275,18 +295,36 @@ namespace ProgramaOTLauncher
 
         private async Task CheckLauncherUpdateAndSyncButtonsAsync()
         {
-            await _atualizaLauncher.CheckForUpdateAsync();
+            try
+            {
+                Logger.Info("CheckLauncherUpdateAndSyncButtonsAsync: Iniciando verificação...");
 
-            var visibility = _atualizaLauncher.IsUpdatePending 
-                ? Visibility.Visible 
-                : Visibility.Hidden;
+                await _atualizaLauncher.CheckForUpdateAsync();
 
-            buttonLauncherUpdate.Visibility = visibility;
+                var visibility = _atualizaLauncher.IsUpdatePending
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+
+                buttonLauncherUpdate.Visibility = visibility;
+
+                Logger.Info($"CheckLauncherUpdateAndSyncButtonsAsync: IsUpdatePending={_atualizaLauncher.IsUpdatePending}, Visibility={visibility}");
+            }
+            catch (Exception ex)
+            {
+                LogError("Erro ao verificar atualização do launcher", ex);
+            }
         }
 
         private async Task CheckClientUpdateAsync()
         {
-            await _atualizaCliente.CheckForUpdateAsync();
+            try
+            {
+                await _atualizaCliente.CheckForUpdateAsync();
+            }
+            catch (Exception ex)
+            {
+                LogError("Erro ao verificar atualização do cliente", ex);
+            }
         }
 
         #endregion
@@ -295,7 +333,15 @@ namespace ProgramaOTLauncher
 
         private async void buttonLauncherUpdate_Click(object sender, RoutedEventArgs e)
         {
-            await _atualizaLauncher.TriggerUpdateAsync();
+            try
+            {
+                Logger.Info("buttonLauncherUpdate_Click: Usuário clicou no botão de atualização");
+                await _atualizaLauncher.TriggerUpdateAsync();
+            }
+            catch (Exception ex)
+            {
+                LogError("Erro ao disparar atualização do launcher", ex);
+            }
         }
 
         private async void buttonPlay_Click(object sender, RoutedEventArgs e)
@@ -321,8 +367,8 @@ namespace ProgramaOTLauncher
 
         private void buttonPlay_MouseEnter(object sender, MouseEventArgs e)
         {
-            var imageName = _atualizaCliente.NeedUpdate 
-                ? "button_hover_update.png" 
+            var imageName = _atualizaCliente.NeedUpdate
+                ? "button_hover_update.png"
                 : "button_hover_play.png";
 
             buttonPlay.Background = new ImageBrush(LoadImage($"pack://application:,,,/assets/{imageName}"));
@@ -330,8 +376,8 @@ namespace ProgramaOTLauncher
 
         private void buttonPlay_MouseLeave(object sender, MouseEventArgs e)
         {
-            var imageName = _atualizaCliente.NeedUpdate 
-                ? "button_update.png" 
+            var imageName = _atualizaCliente.NeedUpdate
+                ? "button_update.png"
                 : "button_play.png";
 
             buttonPlay.Background = new ImageBrush(LoadImage($"pack://application:,,,/assets/{imageName}"));
@@ -351,8 +397,8 @@ namespace ProgramaOTLauncher
             if (ResizeMode == ResizeMode.NoResize)
                 return;
 
-            WindowState = WindowState == WindowState.Normal 
-                ? WindowState.Maximized 
+            WindowState = WindowState == WindowState.Normal
+                ? WindowState.Maximized
                 : WindowState.Normal;
         }
 
@@ -524,21 +570,6 @@ namespace ProgramaOTLauncher
         #endregion
 
         #region Métodos Auxiliares
-
-        private static void TryDeleteFile(string path)
-        {
-            try
-            {
-                if (File.Exists(path))
-                {
-                    File.Delete(path);
-                }
-            }
-            catch
-            {
-                // Silenciosamente ignora erros na limpeza de arquivos legados
-            }
-        }
 
         private static void LogError(string message, Exception ex)
         {

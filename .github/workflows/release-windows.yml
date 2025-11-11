@@ -35,14 +35,24 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $root = (Get-Location).Path
           $launcherOut = Join-Path $root 'bin' 'Release'
-          $launcherZip = Join-Path $root 'ProgramaOT-Launcher-Release.zip'
+          $launcherZip = Join-Path $root 'launcher-update.zip'
           if (Test-Path $launcherZip) { Remove-Item $launcherZip -Force }
           Compress-Archive -Path "$launcherOut\*" -DestinationPath $launcherZip -Force
+
+      - name: Generate SHA256 checksum
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zipPath = Join-Path (Get-Location).Path 'launcher-update.zip'
+          $hash = (Get-FileHash -Algorithm SHA256 -Path $zipPath).Hash.ToLower()
+          $outFile = Join-Path (Get-Location).Path 'launcher-update.zip.sha256'
+          Set-Content -Path $outFile -Value $hash -Encoding ASCII
 
       - name: Create GitHub Release and upload assets
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            ProgramaOT-Launcher-Release.zip
+            launcher-update.zip
+            launcher-update.zip.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

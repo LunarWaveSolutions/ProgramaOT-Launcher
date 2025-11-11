@@ -39,7 +39,6 @@
             <BitmapImage x:Key="IconPlayKey" UriSource="pack://application:,,,/assets/icon_play.png"/>
             <BitmapImage x:Key="BgHintsKey" UriSource="pack://application:,,,/assets/bg_hints.png"/>
             <BitmapImage x:Key="RhLoreKey" UriSource="pack://application:,,,/assets/rh_lore.png"/>
-            <!-- Usa caminho em minúsculas para casar com os Resources incluídos no csproj (assets/...) -->
             <BitmapImage x:Key="IconUpdateKey" UriSource="pack://application:,,,/assets/icon_update.png"/>
         </Grid.Resources>
         <Grid.Background>
@@ -240,102 +239,95 @@
             </Grid>
         </StackPanel>
 
-        <StackPanel
-			Grid.Row="2"
-			VerticalAlignment="Top" Margin="0,103,0,0">
-            <Grid Width="800" Height="60" Margin="0,-17,0,0">
+        <!-- RODAPÉ CORRIGIDO COM LAYOUT FIXO -->
+        <Grid Grid.Row="2" VerticalAlignment="Bottom" Height="60" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-
-                <!-- Container para versão do Cliente -->
-                <StackPanel
-                    Grid.Column="0"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Bottom"
-                    Margin="10,0,14,0">
-                    <TextBlock
-                        x:Name="labelClientTag"
-                        FontFamily="Verdana"
-                        FontSize="12"
-                        FontWeight="Bold"
-                        Foreground="#747474"
+            <!-- Versão do Cliente - ESQUERDA -->
+            <StackPanel Grid.Column="0" 
+                        Orientation="Horizontal" 
+                        HorizontalAlignment="Left"
                         VerticalAlignment="Center"
-                        Text="Client" Margin="1,0,0,0"/>
-                </StackPanel>
-                <!-- Container de versão do Launcher e botão de update -->
-                <StackPanel Orientation="Horizontal" Margin="10,-20,266,0" VerticalAlignment="Center" Grid.ColumnSpan="2" Height="23">
-                    <TextBlock
-               x:Name="labelLauncherVersion"
-               FontFamily="Verdana"
-               FontSize="12"
-               FontWeight="Bold"
-               Foreground="#747474"
-               Text="Launcher"/>
-                    <Button
-                   x:Name="buttonLauncherUpdate"
-                   Width="52"
-                   Height="20"
-                   Visibility="Collapsed"
-                   Click="buttonLauncherUpdate_Click" Background="#2000FF00" BorderBrush="#00000000" Margin="6,-2,0,0">
-                        <Button.ToolTip>
-                            <ToolTip x:Name="LauncherUpdateToolTip" Placement="Bottom"
-                            Content="Atualização do Launcher disponível. Clique aqui para atualizar."/>
-                        </Button.ToolTip>
-                        <Button.Style>
-                            <Style TargetType="{x:Type Button}">
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="{x:Type Button}">
-                                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="0">
-                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                            </Border>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                            </Style>
-                        </Button.Style>
-                        <Image
-               x:Name="buttonLauncherUpdateIcon"
-               Source="{StaticResource IconUpdateKey}"
-               Stretch="Uniform"
-               Height="20" Width="8" RenderTransformOrigin="0.5,0.5" HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Image.RenderTransform>
-                                <TransformGroup>
-                                    <ScaleTransform/>
-                                    <SkewTransform AngleX="0"/>
-                                    <RotateTransform/>
-                                    <TranslateTransform/>
-                                </TransformGroup>
-                            </Image.RenderTransform>
-                        </Image>
-                    </Button>
-                    <!-- Removido botão duplicado de atualização do launcher para evitar sobreposição visual -->
-                </StackPanel>
-                <!-- Logo da empresa com ícone de atualização do Launcher ao lado -->
-                <StackPanel
-                    Grid.Column="1"
-                    Orientation="Horizontal"
-                    VerticalAlignment="Center"
-                    HorizontalAlignment="Center"
-                    Margin="0,0,0,0">
-                    <Image
-                        x:Name="ImageLogoCompany"
-                        Source="{StaticResource LogoCompanyKey}"
-                        Height="42"
-                        Stretch="Uniform"
-                        Width="286"/>
-                </StackPanel>
-            </Grid>
-        </StackPanel>
+                        Margin="15,0,0,0">
+                <TextBlock x:Name="labelClientTag"
+                          FontFamily="Verdana"
+                          FontSize="12"
+                          FontWeight="Bold"
+                          Foreground="#747474"
+                          Text="Client"/>
+            </StackPanel>
+
+            <!-- Logo da Empresa - CENTRO -->
+            <Image Grid.Column="1"
+                   x:Name="ImageLogoCompany"
+                   Source="{StaticResource LogoCompanyKey}"
+                   Height="42"
+                   Stretch="Uniform"
+                   VerticalAlignment="Center"
+                   HorizontalAlignment="Center"/>
+
+            <!-- Versão do Launcher + Botão Update - DIREITA -->
+            <StackPanel Grid.Column="2" 
+                        Orientation="Horizontal" 
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Margin="0,0,15,0">
+                <TextBlock x:Name="labelLauncherVersion"
+                          FontFamily="Verdana"
+                          FontSize="12"
+                          FontWeight="Bold"
+                          Foreground="#747474"
+                          VerticalAlignment="Center"
+                          Text="Launcher"/>
+
+                <!-- Botão de Update do Launcher -->
+                <Button x:Name="buttonLauncherUpdate"
+                        Width="24"
+                        Height="24"
+                        Margin="8,0,0,0"
+                        Visibility="Collapsed"
+                        Click="buttonLauncherUpdate_Click"
+                        Background="Transparent"
+                        BorderBrush="Transparent"
+                        BorderThickness="0"
+                        Cursor="Hand"
+                        VerticalAlignment="Center">
+                    <Button.ToolTip>
+                        <ToolTip Content="Atualização do Launcher disponível. Clique para atualizar."/>
+                    </Button.ToolTip>
+                    <Button.Style>
+                        <Style TargetType="{x:Type Button}">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="{x:Type Button}">
+                                        <Border Background="{TemplateBinding Background}" 
+                                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                                BorderThickness="0"
+                                                CornerRadius="3">
+                                            <ContentPresenter HorizontalAlignment="Center" 
+                                                            VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="#20FFFFFF"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </Button.Style>
+                    <Image x:Name="buttonLauncherUpdateIcon"
+                           Source="{StaticResource IconUpdateKey}"
+                           Stretch="Uniform"
+                           Width="16"
+                           Height="16"/>
+                </Button>
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window>
-
