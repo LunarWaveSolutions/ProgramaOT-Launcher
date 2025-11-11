@@ -3,11 +3,14 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Linq;
+using System.Threading.Tasks;
+using System.Windows;
 
 public class UpdaterHelper
 {
     private static string logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "update_helper_log.txt");
 
+    [STAThread]
     public static void Main(string[] args)
     {
         // Preservar histórico de execução
@@ -149,92 +152,20 @@ public class UpdaterHelper
         if (!string.IsNullOrWhiteSpace(sourceUrl)) Log(string.Format("SourceUrl: {0}", sourceUrl));
         if (!string.IsNullOrWhiteSpace(zipChecksum)) Log(string.Format("ZipChecksum: {0}", zipChecksum));
 
-        if (processId != 0)
-        {
-            try
-            {
-                Process parentProcess = Process.GetProcessById(processId);
-                Log(string.Format("A aguardar que o processo principal (ID: {0}) termine...", processId));
-                parentProcess.WaitForExit();
-                Log("Processo principal terminado.");
-            }
-            catch (ArgumentException)
-            {
-                Log("O processo principal já não está em execução. A continuar com a atualização.");
-            }
-            catch (Exception ex)
-            {
-                Log(string.Format("Erro ao aguardar pelo processo principal: {0}", ex.Message));
-            }
-        }
-        else
-        {
-            Log("ProcessId não fornecido. A aplicar atualização sem aguardar término explícito.");
-            Thread.Sleep(1000);
-        }
-
-        try
-        {
-            Log("A iniciar a cópia de ficheiros...");
-            if (sourceDir != null && targetDir != null)
-            {
-                CopyDirectory(sourceDir, targetDir, 5);
-            }
-            Log("Cópia de ficheiros concluída.");
-
-            // Escrever arquivo de versão do launcher (versionlauncher.json)
-            try
-            {
-                WriteVersionLauncherJson(targetDir, versionTag, sourceUrl, zipChecksum);
-                Log("versionlauncher.json escrito/atualizado com sucesso.");
-            }
-            catch (Exception vex)
-            {
-                Log(string.Format("Falha ao escrever versionlauncher.json: {0}", vex.Message));
-            }
-
-            string mainAppPath = Path.Combine(targetDir ?? ".", "ProgramaOT-Launcher.exe");
-            Log(string.Format("A tentar reiniciar a aplicação principal em: {0}", mainAppPath));
-            if (File.Exists(mainAppPath))
-            {
-                Process.Start(mainAppPath);
-                Log("Aplicação principal reiniciada.");
-            }
-            else
-            {
-                Log("Erro: O executável principal não foi encontrado após a atualização.");
-            }
-        }
-        catch (Exception ex)
-        {
-            Log(string.Format("Ocorreu um erro durante o processo de atualização: {0}", ex.Message));
-        }
-        finally
-        {
-            try
-            {
-                if (sourceDir != null && Directory.Exists(sourceDir))
-                {
-                    Log(string.Format("A limpar o diretório temporário: {0}", sourceDir));
-                    Directory.Delete(sourceDir, true);
-                    Log("Limpeza concluída.");
-                }
-            }
-            catch (Exception ex)
-            {
-                Log(string.Format("Erro ao limpar o diretório temporário: {0}", ex.Message));
-            }
-        }
+        // Iniciar UI WPF de progresso
+        var app = new Application();
+        var window = new UpdaterHelperUI.ProgressWindow(sourceDir!, targetDir!, processId, versionTag, sourceUrl, zipChecksum);
+        app.Run(window);
 
         Log("UpdaterHelper a terminar.");
     }
 
-    private static void WriteVersionLauncherJson(string? targetDir, string? versionTag, string? sourceUrl, string? zipChecksum)
+    public static void WriteVersionLauncherJson(string? targetDir, string? versionTag, string? sourceUrl, string? zipChecksum)
     {
         if (string.IsNullOrWhiteSpace(targetDir)) return;
-        var filePath = Path.Combine(targetDir, "versionlauncher.json");
-        var obsoleteAlias1 = Path.Combine(targetDir, "launchversion.json");
-        var obsoleteAlias2 = Path.Combine(targetDir, "launchversions.json");
+        // Após a verificação acima, garantimos que targetDir não é nulo/whitespace
+        var target = targetDir!;
+        var filePath = Path.Combine(target, "versionlauncher.json");
 
         string installedAtUtc = DateTime.UtcNow.ToString("o");
 
@@ -242,11 +173,14 @@ public class UpdaterHelper
         string? appVersion = null;
         try
         {
-            var exePath = Path.Combine(targetDir, "ProgramaOT-Launcher.exe");
+            var exePath = Path.Combine(target, "ProgramaOT-Launcher.exe");
             if (File.Exists(exePath))
             {
                 var fvi = FileVersionInfo.GetVersionInfo(exePath);
-                appVersion = fvi.ProductVersion ?? fvi.FileVersion;
+                if (fvi != null)
+                {
+                    appVersion = fvi.ProductVersion ?? fvi.FileVersion;
+                }
             }
         }
         catch { }
@@ -264,8 +198,7 @@ public class UpdaterHelper
         // Normalizar tag para armazenamento: remover prefixos como 'v' e 'auto-'
         string NormalizeTagForStore(string? t)
         {
-            if (string.IsNullOrWhiteSpace(t)) return "";
-            var s = t.Trim();
+            var s = t?.Trim() ?? string.Empty;
             if (s.StartsWith("v", StringComparison.OrdinalIgnoreCase)) s = s.Substring(1);
             if (s.StartsWith("auto-", StringComparison.OrdinalIgnoreCase)) s = s.Substring("auto-".Length);
             return s;
@@ -281,12 +214,89 @@ public class UpdaterHelper
                    "\n}";
 
         File.WriteAllText(filePath, json);
+        try { Log($"versionlauncher.json salvo em: {filePath}\nConteúdo: {json}"); } catch { }
 
-        // Remover aliases antigos se existirem, para unificar em um único arquivo
-        try { if (File.Exists(obsoleteAlias1)) { File.Delete(obsoleteAlias1); Log("Obsoleto removido: launchversion.json"); } } catch { }
-        try { if (File.Exists(obsoleteAlias2)) { File.Delete(obsoleteAlias2); Log("Obsoleto removido: launchversions.json"); } } catch { }
+        // Padronização: utilizar apenas versionlauncher.json
     }
 
+    /// <summary>
+    /// Atualiza o arquivo local launcher_config.json no diretório de destino, garantindo que
+    /// os campos relacionados à versão do launcher reflitam a versão instalada.
+    /// Não depende de bibliotecas externas de JSON: usa Regex para atualizar os valores.
+    /// </summary>
+    /// <param name="targetDir">Diretório onde o launcher foi instalado/atualizado.</param>
+    /// <param name="versionTag">Tag de versão recebida (pode incluir prefixos visuais como 'v').</param>
+    public static void UpdateLauncherConfigVersion(string? targetDir, string? versionTag)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(targetDir))
+            {
+                Log("UpdateLauncherConfigVersion: targetDir vazio.");
+                return;
+            }
+
+            // targetDir é garantido não nulo/whitespace pelo retorno acima
+            var target = targetDir!;
+            var configPath = Path.Combine(target, "launcher_config.json");
+            if (!File.Exists(configPath))
+            {
+                Log($"UpdateLauncherConfigVersion: arquivo não encontrado em {configPath}. Nada a atualizar.");
+                return;
+            }
+
+            string NormalizeTagForStore(string? t)
+            {
+                var s = t?.Trim() ?? string.Empty;
+                if (s.StartsWith("v", StringComparison.OrdinalIgnoreCase)) s = s.Substring(1);
+                if (s.StartsWith("auto-", StringComparison.OrdinalIgnoreCase)) s = s.Substring("auto-".Length);
+                return s;
+            }
+            var cleanTag = NormalizeTagForStore(versionTag);
+
+            var original = File.ReadAllText(configPath);
+
+            // Usa Regex para substituir valores de launcherVersion e launcherMinVersion, se existirem
+            // Padrões tolerantes a espaços e diferentes formatos
+            string ReplaceJsonStringValue(string input, string field, string newValue)
+            {
+                try
+                {
+                    // Importante: em strings C#, a barra invertida precisa ser duplicada para gerar \s no regex
+                    // Assim evitamos o erro CS1009 (sequência de escape não reconhecida)
+                    var pattern = $"\"{field}\"\\s*:\\s*\"[^\"]*\"";
+                    var replacement = $"\"{field}\": \"{newValue}\"";
+                    var result = System.Text.RegularExpressions.Regex.Replace(input, pattern, replacement);
+                    return result;
+                }
+                catch (Exception rex)
+                {
+                    Log($"Regex replace falhou para {field}: {rex.Message}");
+                    return input;
+                }
+            }
+
+            var updated = ReplaceJsonStringValue(original, "launcherVersion", cleanTag);
+            // Atualiza launcherMinVersion apenas se existir no arquivo; manter compatibilidade
+            updated = ReplaceJsonStringValue(updated, "launcherMinVersion", cleanTag);
+
+            if (!string.Equals(original, updated, StringComparison.Ordinal))
+            {
+                File.WriteAllText(configPath, updated);
+                Log($"launcher_config.json atualizado com versão {cleanTag} em: {configPath}");
+            }
+            else
+            {
+                Log("UpdateLauncherConfigVersion: nenhum campo alterado (possivelmente campos ausentes no JSON).");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"Falha ao atualizar launcher_config.json: {ex.Message}");
+        }
+    }
+
+    // Método antigo mantido apenas caso seja reutilizado em outros cenários
     private static void CopyDirectory(string source, string target, int retries)
     {
         if (target != null && !Directory.Exists(target))
@@ -323,7 +333,7 @@ public class UpdaterHelper
         }
     }
 
-    private static void Log(string message)
+    public static void Log(string message)
     {
         File.AppendAllText(logFilePath, string.Format("[{0}] {1}\n", DateTime.Now, message));
     }

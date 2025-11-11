@@ -318,44 +318,7 @@
                             </Image.RenderTransform>
                         </Image>
                     </Button>
-                    <Button
-               x:Name="buttonLauncherUpdate_Copiar"
-               Width="52"
-               Height="20"
-               Visibility="Collapsed"
-               Click="buttonLauncherUpdate_Click" Background="#2000FF00" BorderBrush="#00000000" Margin="-52,0,0,0">
-                        <Button.ToolTip>
-                            <ToolTip x:Name="LauncherUpdateToolTip1" Placement="Bottom"
-                       Content="Atualização do Launcher disponível. Clique aqui para atualizar."/>
-                        </Button.ToolTip>
-                        <Button.Style>
-                            <Style TargetType="{x:Type Button}">
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="{x:Type Button}">
-                                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="0">
-                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                            </Border>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                            </Style>
-                        </Button.Style>
-                        <Image
-                   x:Name="buttonLauncherUpdateIcon1"
-                   Source="{StaticResource IconUpdateKey}"
-                   Stretch="Uniform"
-                   Height="20" Width="8" RenderTransformOrigin="0.5,0.5" HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Image.RenderTransform>
-                                <TransformGroup>
-                                    <ScaleTransform/>
-                                    <SkewTransform AngleX="0"/>
-                                    <RotateTransform/>
-                                    <TranslateTransform/>
-                                </TransformGroup>
-                            </Image.RenderTransform>
-                        </Image>
-                    </Button>
+                    <!-- Removido botão duplicado de atualização do launcher para evitar sobreposição visual -->
                 </StackPanel>
                 <!-- Logo da empresa com ícone de atualização do Launcher ao lado -->
                 <StackPanel

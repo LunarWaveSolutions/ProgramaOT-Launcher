@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Windows;
 using LauncherConfig;
@@ -30,7 +31,8 @@ namespace ProgramaOTLauncher.componentes
         {
             try { Logger.Info("Verificando atualização do launcher..."); } catch { }
             var installedLauncherTag = _getInstalledLauncherTag();
-            var versionForCompare = string.IsNullOrWhiteSpace(installedLauncherTag) ? _programVersion : installedLauncherTag;
+            // Garantir que a versão usada para comparação não inclua prefixo 'v' ou 'auto-'
+            var versionForCompare = string.IsNullOrWhiteSpace(installedLauncherTag) ? CleanTagLocal(_programVersion) : CleanTagLocal(installedLauncherTag);
             var luInfo = await LauncherUpdateService.CheckAsync(_clientConfig, versionForCompare);
 
             PendingUpdate = luInfo.HasUpdate ? luInfo : null;
@@ -43,6 +45,16 @@ namespace ProgramaOTLauncher.componentes
             try { Logger.Info($"Resultado da verificação: hasUpdate={luInfo.HasUpdate}, latestTag={luInfo.LatestTag}"); } catch { }
 
             return luInfo;
+        }
+
+        // Remover prefixos usados apenas visualmente para permitir comparação correta
+        private static string CleanTagLocal(string t)
+        {
+            if (string.IsNullOrWhiteSpace(t)) return t;
+            var s = t.Trim();
+            if (s.StartsWith("auto-", StringComparison.OrdinalIgnoreCase)) s = s.Substring("auto-".Length);
+            if (s.StartsWith("v", StringComparison.OrdinalIgnoreCase)) s = s.Substring(1);
+            return s;
         }
 
         public async Task TriggerUpdateAsync(bool isMandatory = false)
@@ -60,48 +72,42 @@ namespace ProgramaOTLauncher.componentes
                     return;
             }
 
-            await StartUpdateProcessAsync(PendingUpdate);
+            // Alteração de fluxo: abrir a UpdateProgressWindow diretamente no mesmo processo
+            await StartUpdateInlineAsync(PendingUpdate);
         }
 
-        private static Task StartUpdateProcessAsync(LauncherUpdateInfo luInfo)
+        // Novo fluxo: inicia a UpdateProgressWindow diretamente (sem relançar o executável)
+        private static Task StartUpdateInlineAsync(LauncherUpdateInfo luInfo)
         {
             try
             {
-                var currentProcess = Process.GetCurrentProcess();
-                var args = $"--download-update --url=\"{luInfo.AssetUrl}\" --version=\"{luInfo.LatestTag}\" --pid={currentProcess.Id}";
+                var argsList = new List<string>
+                {
+                    "--download-update",
+                    $"--url={luInfo.AssetUrl}",
+                    $"--version={luInfo.LatestTag}",
+                    $"--pid={Process.GetCurrentProcess().Id}"
+                };
                 if (!string.IsNullOrWhiteSpace(luInfo.AssetApiUrl))
                 {
-                    args += $" --api-url=\"{luInfo.AssetApiUrl}\"";
+                    argsList.Add($"--api-url={luInfo.AssetApiUrl}");
                 }
                 if (!string.IsNullOrWhiteSpace(luInfo.ChecksumUrl))
                 {
-                    args += $" --checksum-url=\"{luInfo.ChecksumUrl}\"";
+                    argsList.Add($"--checksum-url={luInfo.ChecksumUrl}");
                 }
 
-                var processStartInfo = new ProcessStartInfo
-                {
-                    FileName = currentProcess.MainModule.FileName,
-                    Arguments = args,
-                    UseShellExecute = true,
-                };
-
-                // Evitar demora por UAC/elevacao desnecessária: só eleva se o diretório de destino não for gravável
-                var targetDir = AppDomain.CurrentDomain.BaseDirectory;
-                var needsElevation = !IsDirectoryWritable(targetDir);
-                if (needsElevation)
-                {
-                    processStartInfo.Verb = "runas";
-                }
-
-                try { Logger.Info($"Iniciando atualização do launcher com argumentos: {args}"); } catch { }
-                Process.Start(processStartInfo);
-                try { Logger.Info("Processo de atualização iniciado. Encerrando aplicação atual."); } catch { }
-                Environment.Exit(0);
+                try { Logger.Info($"Abrindo UpdateProgressWindow inline com args: {string.Join(" ", argsList)}"); } catch { }
+                var progressWindow = new UpdateProgressWindow(argsList.ToArray());
+                // Opcional: definir Owner para manter o foco
+                try { progressWindow.Owner = Application.Current?.MainWindow; } catch { }
+                progressWindow.ShowDialog();
+                try { Logger.Info("UpdateProgressWindow finalizada."); } catch { }
             }
             catch (Exception ex)
             {
-                try { Logger.Error("Falha ao iniciar o processo de atualização do launcher", ex); } catch { }
-                MessageBox.Show($"Falha ao iniciar o processo de atualização do launcher: {ex.Message}", "Erro de Atualização", MessageBoxButton.OK, MessageBoxImage.Error);
+                try { Logger.Error("Falha ao abrir a UpdateProgressWindow inline", ex); } catch { }
+                MessageBox.Show($"Falha ao abrir a janela de progresso da atualização: {ex.Message}", "Erro de Atualização", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             return Task.CompletedTask;
         }

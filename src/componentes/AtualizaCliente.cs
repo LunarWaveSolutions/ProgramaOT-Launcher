@@ -209,8 +209,9 @@ namespace ProgramaOTLauncher.componentes
 
             try
             {
-                try { Logger.Info("Extraindo pacote do cliente..."); } catch { }
-                await Task.Run(() => ExtractZip(filePath, PathHelper.GetLauncherPath(_clientConfig)));
+                try { Logger.Info("Extraindo pacote do cliente com progresso e substituição seletiva..."); } catch { }
+                // Executa extração em thread de fundo, atualizando UI via Dispatcher
+                await Task.Run(() => ExtractZipWithProgressSelective(filePath, PathHelper.GetLauncherPath(_clientConfig)));
 
                 string latestReleaseTag = await GetLatestReleaseTagAsync();
                 if (!string.IsNullOrWhiteSpace(latestReleaseTag))
@@ -236,11 +237,94 @@ namespace ProgramaOTLauncher.componentes
             }
         }
 
-        private void ExtractZip(string zipPath, string extractPath)
+        private void ExtractZipWithProgressSelective(string zipPath, string extractPath)
         {
             using (ZipFile zip = ZipFile.Read(zipPath))
             {
-                zip.ExtractAll(extractPath, ExtractExistingFileAction.OverwriteSilently);
+                int total = zip.Entries.Count;
+                int processed = 0;
+
+                // Mensagem inicial
+                try
+                {
+                    Application.Current?.Dispatcher?.Invoke(() =>
+                    {
+                        _listener.SetDownloadStatus("Preparando para aplicar atualização...");
+                        _listener.SetDownloadPercentage(0);
+                    });
+                }
+                catch { }
+
+                foreach (var entry in zip.Entries)
+                {
+                    bool skipped = false;
+                    try
+                    {
+                        // Caminho alvo do arquivo/diretório
+                        var relativePath = entry.FileName.Replace('/', System.IO.Path.DirectorySeparatorChar);
+                        var targetPath = System.IO.Path.Combine(extractPath, relativePath);
+
+                        if (entry.IsDirectory)
+                        {
+                            // Garante o diretório
+                            try { System.IO.Directory.CreateDirectory(targetPath); } catch { }
+                        }
+                        else
+                        {
+                            // Se o arquivo existir e o tamanho for igual ao tamanho descompactado do ZIP, não substituir
+                            try
+                            {
+                                if (System.IO.File.Exists(targetPath))
+                                {
+                                    var fi = new System.IO.FileInfo(targetPath);
+                                    long existingSize = fi.Length;
+                                    long zipUncompressedSize = (long)entry.UncompressedSize;
+                                    if (existingSize == zipUncompressedSize)
+                                    {
+                                        skipped = true; // não altera
+                                    }
+                                }
+                            }
+                            catch { }
+
+                            if (!skipped)
+                            {
+                                // Extrai com overwrite silencioso
+                                entry.Extract(extractPath, ExtractExistingFileAction.OverwriteSilently);
+                            }
+                        }
+                    }
+                    catch (Exception exEntry)
+                    {
+                        try { Logger.Error($"Falha ao processar entrada do ZIP: {entry.FileName}", exEntry); } catch { }
+                        // Continua com as próximas entradas
+                    }
+                    finally
+                    {
+                        processed++;
+                        int pct = Math.Min(100, (int)Math.Round(processed * 100.0 / Math.Max(1, total)));
+                        try
+                        {
+                            Application.Current?.Dispatcher?.Invoke(() =>
+                            {
+                                _listener.SetDownloadPercentage(pct);
+                                _listener.SetDownloadStatus($"Aplicando atualização: {processed}/{total} - {entry.FileName} {(skipped ? "(sem alterações)" : "")}");
+                            });
+                        }
+                        catch { }
+                    }
+                }
+
+                // Mensagem final
+                try
+                {
+                    Application.Current?.Dispatcher?.Invoke(() =>
+                    {
+                        _listener.SetDownloadPercentage(100);
+                        _listener.SetDownloadStatus("Finalizando atualização...");
+                    });
+                }
+                catch { }
             }
         }
 
