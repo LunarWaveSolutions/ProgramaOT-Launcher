@@ -127,9 +127,10 @@ namespace ProgramaOTLauncher.componentes
 
         private async Task UpdateClientAsync()
         {
-            if (!Directory.Exists(PathHelper.GetLauncherPath(_clientConfig, true)))
+            // Garante a pasta do cliente (ex.: BaseDirectory\\Tibia)
+            if (!Directory.Exists(PathHelper.GetLauncherPath(_clientConfig)))
             {
-                Directory.CreateDirectory(PathHelper.GetLauncherPath(_clientConfig));
+                try { Directory.CreateDirectory(PathHelper.GetLauncherPath(_clientConfig)); } catch { }
             }
 
             _listener.ShowProgress();
@@ -140,8 +141,19 @@ namespace ProgramaOTLauncher.componentes
 
             try
             {
-                if (!string.IsNullOrWhiteSpace(token))
+                // 1) Decide a origem do ZIP
+                string requestUrl = null;
+                bool useAssetApi = false; // quando verdadeiro, envia Accept: application/octet-stream
+
+                // Prioriza newClientUrl do launcher_config.json, se fornecido
+                if (!string.IsNullOrWhiteSpace(_clientConfig?.newClientUrl))
                 {
+                    requestUrl = _clientConfig.newClientUrl;
+                    try { Logger.Info($"Baixando cliente via newClientUrl configurado: {requestUrl}"); } catch { }
+                }
+                else if (!string.IsNullOrWhiteSpace(token))
+                {
+                    // Repositório privado: usa API para obter o asset e baixar via endpoint de asset
                     _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("token", token);
 
                     var latestResp = await _httpClient.GetAsync(ProgramaOTLauncher.UpdateConfig.ReleasesApiLatest);
@@ -151,37 +163,84 @@ namespace ProgramaOTLauncher.componentes
                     if (latestObj == null || !latestObj.ContainsKey("assets"))
                         throw new Exception("Assets not found in release.");
 
-                    var assets = latestObj["assets"] as Newtonsoft.Json.Linq.JArray;
+                    var assets = latestObj["assets"] as JArray;
                     var asset = assets?.FirstOrDefault(a => a["name"]?.ToString() == "client-to-update.zip");
                     if (asset == null)
                         throw new Exception("Asset 'client-to-update.zip' not found in release.");
 
-                    var assetUrl = asset["browser_download_url"].ToString();
-                    try { Logger.Info($"Baixando cliente via API privada: {assetUrl}"); } catch { }
-                    
-                    using (var webClient = new System.Net.WebClient())
-                    {
-                        webClient.DownloadProgressChanged += Client_DownloadProgressChanged;
-                        webClient.DownloadFileCompleted += async (s, e) => await Client_DownloadFileCompleted(s, e, targetFile);
-                        await webClient.DownloadFileTaskAsync(new Uri(assetUrl), targetFile);
-                    }
+                    // Para downloads autenticados, preferir a URL da API do asset
+                    var assetApiUrl = asset["url"]?.ToString();
+                    var browserUrl = asset["browser_download_url"]?.ToString();
+                    requestUrl = !string.IsNullOrWhiteSpace(assetApiUrl) ? assetApiUrl : browserUrl;
+                    useAssetApi = !string.IsNullOrWhiteSpace(assetApiUrl);
+                    try { Logger.Info($"Baixando cliente via {(useAssetApi ? "API privada (asset url)" : "browser_download_url")}: {requestUrl}"); } catch { }
                 }
                 else
                 {
-                    string latestZipUrl = ProgramaOTLauncher.UpdateConfig.AssetClientZipLatestPublic;
-                    try { Logger.Info($"Baixando cliente via URL pública: {latestZipUrl}"); } catch { }
-                    using (var webClient = new System.Net.WebClient())
-                    {
-                        webClient.DownloadProgressChanged += Client_DownloadProgressChanged;
-                        webClient.DownloadFileCompleted += async (s, e) => await Client_DownloadFileCompleted(s, e, targetFile);
-                        await webClient.DownloadFileTaskAsync(new Uri(latestZipUrl), targetFile);
-                    }
+                    // Repositório público
+                    requestUrl = ProgramaOTLauncher.UpdateConfig.AssetClientZipLatestPublic;
+                    try { Logger.Info($"Baixando cliente via URL pública: {requestUrl}"); } catch { }
                 }
+
+                // 2) Baixa o arquivo com HttpClient e progresso
+                await DownloadZipStreamAsync(requestUrl, targetFile, useAssetApi);
+
+                // 3) Continua o fluxo como se o WebClient tivesse concluído
+                var e = new AsyncCompletedEventArgs(null, false, null);
+                await Client_DownloadFileCompleted(this, e, targetFile);
             }
             catch (Exception ex)
             {
                 try { Logger.Error("Falha no download do cliente", ex); } catch { }
                 System.Windows.MessageBox.Show($"Failed to download client: {ex.Message}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            }
+        }
+
+        private async Task DownloadZipStreamAsync(string requestUrl, string destPath, bool assetApi)
+        {
+            // Configura cabeçalhos padrões
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("programaot-launcher");
+            var token = ProgramaOTLauncher.UpdateConfig.GitHubToken;
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("token", token);
+            }
+
+            var req = new HttpRequestMessage(HttpMethod.Get, requestUrl);
+            if (assetApi && !string.IsNullOrWhiteSpace(token))
+            {
+                // Quando usando endpoint de asset da API do GitHub, solicitar o stream binário
+                req.Headers.Accept.ParseAdd("application/octet-stream");
+            }
+
+            using (var resp = await _httpClient.SendAsync(req, HttpCompletionOption.ResponseHeadersRead))
+            {
+                resp.EnsureSuccessStatusCode();
+
+                var contentLength = resp.Content.Headers.ContentLength ?? -1L;
+                long totalRead = 0;
+                var buffer = new byte[81920];
+
+                using (var input = await resp.Content.ReadAsStreamAsync())
+                using (var fs = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    int read;
+                    while ((read = await input.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                    {
+                        await fs.WriteAsync(buffer, 0, read);
+                        totalRead += read;
+                        if (contentLength > 0)
+                        {
+                            var pct = (int)Math.Round(totalRead * 100.0 / contentLength);
+                            _listener.SetDownloadPercentage(Math.Max(0, Math.Min(100, pct)));
+                            _listener.SetDownloadStatus($"Baixando... {SizeSuffix(totalRead)} / {SizeSuffix(contentLength)}");
+                        }
+                        else
+                        {
+                            _listener.SetDownloadStatus($"Baixando... {SizeSuffix(totalRead)}");
+                        }
+                    }
+                }
             }
         }
 

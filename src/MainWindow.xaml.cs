@@ -521,6 +521,8 @@ namespace ProgramaOTLauncher
             buttonPlayIcon.Source = LoadImage("pack://application:,,,/assets/icon_play.png");
             buttonPlay_tooltip.Text = "Play";
             labelClientVersion.Visibility = Visibility.Collapsed;
+            // Garantir que o botão volte a aparecer após HideProgress ter colapsado
+            buttonPlay.Visibility = Visibility.Visible;
         }
 
         public void ShowUpdateButton()
